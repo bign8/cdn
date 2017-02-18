@@ -18,6 +18,7 @@ var (
 	n    = flag.Int("size", 1100, "How many nodes to build website")
 	l    = flag.Int("link", 30, "How many links on each page")
 	seed = flag.Int64("seed", 0, "Seed of the random package")
+	port = flag.Int("port", 8080, "What port to run server on")
 
 	// TODO: fix bug with padding (try n=1100)
 	mask = fmt.Sprintf("%%0%dd", int(math.Log10(float64(*n))))
@@ -28,6 +29,7 @@ func pad(num int) string { return fmt.Sprintf(mask, num) }
 type graph [][]int
 
 func genGraph(numLinks int) graph {
+	rander := rand.New(rand.NewSource(*seed))
 	if numLinks > *n {
 		numLinks = *n - 1
 	}
@@ -39,15 +41,15 @@ func genGraph(numLinks int) graph {
 		G[i][0] = i - 1
 		G[i][1] = i + 1
 		for j := 2; j < numLinks; j++ {
-			G[i][j] = rand.Intn(*n)
+			G[i][j] = rander.Intn(*n)
 		}
 	}
 	G[0][0] = *n - 1
 	G[*n-1][1] = 0
 	for i := range G {
-		x := rand.Intn(numLinks)
+		x := rander.Intn(numLinks)
 		G[i][0], G[i][x] = G[i][x], G[i][0]
-		x = rand.Intn(numLinks)
+		x = rander.Intn(numLinks)
 		G[i][1], G[i][x] = G[i][x], G[i][1]
 	}
 	log.Printf("Graph Completed: %s", time.Since(now))
@@ -109,7 +111,7 @@ func (s *server) redirect(w http.ResponseWriter, r *http.Request) {
 	atomic.AddUint64(&s.mis, 1)
 }
 
-func (s *server) print() {
+func (s *server) logger() {
 	var total, val uint64
 	for {
 		if val = atomic.LoadUint64(&s.hit); val != 0 {
@@ -123,11 +125,10 @@ func (s *server) print() {
 
 func main() {
 	flag.Parse()
-	rand.Seed(*seed)
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	s := &server{g: genGraph(*l)}
 	http.HandleFunc("/page/", s.page)
 	http.HandleFunc("/", s.redirect)
-	go s.print()
-	http.ListenAndServe(":8080", nil)
+	go s.logger()
+	http.ListenAndServe(":"+strconv.Itoa(*port), nil)
 }
