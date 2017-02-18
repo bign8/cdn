@@ -4,13 +4,13 @@
 set -e # causes the whole script to fail if any commands fail
 set -o pipefail # causes pipes to fail if the input command fails
 
-# # ADD ca-certificates.crt /etc/ssl/certs/
 # cat > Dockerfile <<- EOM
 # 	FROM scratch
+# 	ADD ca-certificates.crt /etc/ssl/certs/
 # 	ADD main /
 # 	CMD ["/main"]
 # EOM
-
+#
 # if [ ! -f certz.crt ]; then
 # 	echo -n "Downloading CA Certs "
 # 	curl https://curl.haxx.se/ca/cacert.pem -# -o certz.crt 2>&1 | xxd | while read; do echo -n .; done
@@ -49,9 +49,10 @@ find */* -name "*.go" -print0 | xargs -0 -n1 dirname | sort -u | while read line
   echo " Done"
 
   # Cleaning up assets
-  # echo -en "\tFinish "
-  # rm -v main Dockerfile ca-certificates.crt | while read; do echo -n .; done
-  # echo " Done"
+  echo -en "\tFinish "
+  # Dockerfile ca-certificates.crt
+  rm -v main | while read; do echo -n .; done
+  echo " Done"
 
   popd > /dev/null
 done
