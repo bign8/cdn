@@ -3,14 +3,31 @@ services:
   origin:
     image: cdn-origin
     ports:
-      - "8080"
+      - 8080
 
   # thanks: https://github.com/vegasbrianc/docker-compose-demo
-  lb:
+  origin_lb:
     image: dockercloud/haproxy:1.6.3 # https://github.com/docker/dockercloud-haproxy
     ports:
-      - 80:80
+      - 81:80
     links:
       - origin
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+
+  server:
+    image: cdn-server
+    ports:
+      - 8080
+
+  server_lb:
+    image: dockercloud/haproxy:1.6.3
+    ports:
+      - 82:80
+    links:
+      - server
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  client:
+    image: cdn-client
