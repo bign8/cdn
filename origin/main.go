@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"runtime"
 	"strconv"
-	"sync/atomic"
 	"text/template"
 	"time"
 )
@@ -22,6 +21,7 @@ var (
 	content = flag.Int("pars", 40, "How many paragraphs on each page")
 	seed    = flag.Int64("seed", 0, "Seed of the random package")
 	port    = flag.Int("port", 8080, "What port to run server on")
+	inter   = flag.Duration("log", time.Second, "What interval to operate logs on")
 	mask    = "%09d"
 )
 
@@ -56,9 +56,9 @@ var t = template.Must(template.New("page").Parse(`<!DOCTYPE html>
 </html>`))
 
 type server struct {
-	g                  graph
-	imgCache           [][]byte
-	hit, mis, bad, img uint64
+	g        graph
+	imgCache [][]byte
+	stat     stats
 }
 
 func (s *server) page(w http.ResponseWriter, r *http.Request) {
@@ -66,7 +66,7 @@ func (s *server) page(w http.ResponseWriter, r *http.Request) {
 	u, err := strconv.Atoi(r.URL.Path[6:]) // 6 = len("/page/")
 	if err != nil {
 		http.NotFound(w, r)
-		atomic.AddUint64(&s.bad, 1)
+		s.stat.inc("bad")
 		return
 	}
 	if u > s.g.Size() || u < 0 {
@@ -95,47 +95,35 @@ func (s *server) page(w http.ResponseWriter, r *http.Request) {
 		log.Fatal(err)
 	}
 	// log.Printf("%s %s", r.URL.Path, time.Since(now))
-	atomic.AddUint64(&s.hit, 1)
+	s.stat.inc("hit")
 }
 
 func (s *server) image(w http.ResponseWriter, r *http.Request) {
 	u, err := strconv.Atoi(r.URL.Path[5:]) // 5 = len("/img/")
 	if err != nil {
 		http.NotFound(w, r)
-		atomic.AddUint64(&s.bad, 1)
+		s.stat.inc("bad")
 		return
 	}
 	if u > *nimg || u < 0 {
 		http.NotFound(w, r)
-		atomic.AddUint64(&s.bad, 1)
+		s.stat.inc("bad")
 		return
 	}
 	bits := s.imgCache[u]
 	if bits == nil {
-		fmt.Println("Generating image", u)
+		log.Println("Generating image", u)
 		bits = genImage(u)
 		s.imgCache[u] = bits
 	}
 	w.Write(bits)
-	atomic.AddUint64(&s.img, 1)
+	s.stat.inc("img")
 }
 
 func (s *server) redirect(w http.ResponseWriter, r *http.Request) {
 	log.Println("Redirecting", r.URL.String())
 	http.Redirect(w, r, "/page/"+pad(rand.Intn(s.g.Size())), http.StatusTemporaryRedirect)
-	atomic.AddUint64(&s.mis, 1)
-}
-
-func (s *server) logger() {
-	var total, val uint64
-	for {
-		if val = atomic.LoadUint64(&s.hit); val != 0 {
-			total += val
-			log.Printf("QPS: %d; Total: %d\n", val, total)
-			atomic.StoreUint64(&s.hit, 0)
-		}
-		time.Sleep(time.Second)
-	}
+	s.stat.inc("mis")
 }
 
 func main() {
@@ -145,6 +133,7 @@ func main() {
 	s := &server{
 		g:        genGraph(*size, *links),
 		imgCache: make([][]byte, *nimg),
+		stat:     newStats(),
 	}
 	http.HandleFunc("/favicon.ico", http.NotFound)
 	http.HandleFunc("/page/", s.page)
