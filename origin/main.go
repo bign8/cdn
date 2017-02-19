@@ -60,9 +60,9 @@ var t = template.Must(template.New("page").Parse(`<!DOCTYPE html>
 </html>`))
 
 type server struct {
-	g             graph
-	imgCache      [][]byte
-	hit, mis, bad uint64
+	g                  graph
+	imgCache           [][]byte
+	hit, mis, bad, img uint64
 }
 
 func (s *server) page(w http.ResponseWriter, r *http.Request) {
@@ -121,8 +121,7 @@ func (s *server) image(w http.ResponseWriter, r *http.Request) {
 		s.imgCache[u] = bits
 	}
 	w.Write(bits)
-	// // TODO
-	// http.NotFound(w, r)
+	atomic.AddUint64(&s.img, 1)
 }
 
 func genImage(id int) []byte {
