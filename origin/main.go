@@ -1,12 +1,8 @@
 package main
 
 import (
-	"bytes"
 	"flag"
 	"fmt"
-	"image"
-	"image/color"
-	"image/png"
 	"log"
 	"math"
 	"math/rand"
@@ -32,7 +28,7 @@ var (
 func pad(num int) string { return fmt.Sprintf(mask, num) }
 
 var t = template.Must(template.New("page").Parse(`<!DOCTYPE html>
-<html>
+<html lang="en">
 	<head>
 		<title>Page {{.Title}}</title>
 	</head>
@@ -94,7 +90,7 @@ func (s *server) page(w http.ResponseWriter, r *http.Request) {
 		Links   []string
 		Images  []string
 		Content []string
-	}{pad(u), links, imgs, make([]string, 0)}
+	}{pad(u), links, imgs, genText(u)}
 	if err := t.Execute(w, data); err != nil {
 		log.Fatal(err)
 	}
@@ -122,25 +118,6 @@ func (s *server) image(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Write(bits)
 	atomic.AddUint64(&s.img, 1)
-}
-
-func genImage(id int) []byte {
-	rander := rand.New(rand.NewSource(int64(id)))
-	bounds := image.Rect(0, 0, 100, 50)
-	img := image.NewRGBA(bounds)
-	for i := 0; i < bounds.Dx(); i++ {
-		for j := 0; j < bounds.Dy(); j++ {
-			img.Set(i, j, color.RGBA{
-				uint8(rander.Intn(255)),
-				uint8(rander.Intn(255)),
-				uint8(rander.Intn(255)),
-				255,
-			})
-		}
-	}
-	var buf bytes.Buffer
-	png.Encode(&buf, img)
-	return buf.Bytes()
 }
 
 func (s *server) redirect(w http.ResponseWriter, r *http.Request) {
