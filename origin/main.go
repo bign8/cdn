@@ -1,8 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
+	"image"
+	"image/color"
+	"image/png"
 	"log"
 	"math"
 	"math/rand"
@@ -15,46 +19,17 @@ import (
 )
 
 var (
-	n    = flag.Int("size", 1100, "How many nodes to build website")
-	l    = flag.Int("link", 30, "How many links on each page")
-	seed = flag.Int64("seed", 0, "Seed of the random package")
-	port = flag.Int("port", 8080, "What port to run server on")
-
-	// TODO: fix bug with padding (try n=1100)
-	mask = fmt.Sprintf("%%0%dd", int(math.Log10(float64(*n))))
+	size    = flag.Int("size", 1000, "How many nodes to build website")
+	links   = flag.Int("link", 20, "How many links on each page")
+	images  = flag.Int("imgs", 6, "How many images on each page")
+	nimg    = flag.Int("nimg", 30, "Total number of images in system")
+	content = flag.Int("pars", 40, "How many paragraphs on each page")
+	seed    = flag.Int64("seed", 0, "Seed of the random package")
+	port    = flag.Int("port", 8080, "What port to run server on")
+	mask    = "%09d"
 )
 
 func pad(num int) string { return fmt.Sprintf(mask, num) }
-
-type graph [][]int
-
-func genGraph(numLinks int) graph {
-	rander := rand.New(rand.NewSource(*seed))
-	if numLinks > *n {
-		numLinks = *n - 1
-	}
-	log.Print("Starting Graph Creation.")
-	now := time.Now()
-	G := make(graph, *n)
-	for i := range G {
-		G[i] = make([]int, numLinks)
-		G[i][0] = i - 1
-		G[i][1] = i + 1
-		for j := 2; j < numLinks; j++ {
-			G[i][j] = rander.Intn(*n)
-		}
-	}
-	G[0][0] = *n - 1
-	G[*n-1][1] = 0
-	for i := range G {
-		x := rander.Intn(numLinks)
-		G[i][0], G[i][x] = G[i][x], G[i][0]
-		x = rander.Intn(numLinks)
-		G[i][1], G[i][x] = G[i][x], G[i][1]
-	}
-	log.Printf("Graph Completed: %s", time.Since(now))
-	return G
-}
 
 var t = template.Must(template.New("page").Parse(`<!DOCTYPE html>
 <html>
@@ -63,17 +38,30 @@ var t = template.Must(template.New("page").Parse(`<!DOCTYPE html>
 	</head>
 	<body>
 		<h1>Page {{.Title}}</h1>
-		<ul>{{range .Items}}
+		<h2>Links</h2>
+		<ul>{{range .Links}}
 			<li>
 				<a href="/page/{{ . }}">Link {{ . }}</a>
 			</li>{{end}}
 		</ul>
-    <p>TODO: generate random body content</p>
+		<h2>Images</h2>
+		<ul>{{range .Images}}
+			<li>
+				<img src="/img/{{ . }}" alt="Image {{ . }}">
+			</li>{{end}}
+		</ul>
+		<h2>Content</h2>
+		<ul>{{range .Content}}
+			<li>
+				<p>{{ . }}</p>
+			</li>{{end}}
+		</ul>
 	</body>
 </html>`))
 
 type server struct {
 	g             graph
+	imgCache      [][]byte
 	hit, mis, bad uint64
 }
 
@@ -85,7 +73,7 @@ func (s *server) page(w http.ResponseWriter, r *http.Request) {
 		atomic.AddUint64(&s.bad, 1)
 		return
 	}
-	if u > *n || u < 0 {
+	if u > s.g.Size() || u < 0 {
 		s.redirect(w, r)
 		return
 	}
@@ -95,10 +83,18 @@ func (s *server) page(w http.ResponseWriter, r *http.Request) {
 		links[i] = pad(n)
 	}
 
+	imgs := make([]string, *images)
+	rander := rand.New(rand.NewSource(int64(u)))
+	for i := range imgs {
+		imgs[i] = pad(rander.Intn(*nimg))
+	}
+
 	data := struct {
-		Title string
-		Items []string
-	}{pad(u), links}
+		Title   string
+		Links   []string
+		Images  []string
+		Content []string
+	}{pad(u), links, imgs, make([]string, 0)}
 	if err := t.Execute(w, data); err != nil {
 		log.Fatal(err)
 	}
@@ -106,8 +102,51 @@ func (s *server) page(w http.ResponseWriter, r *http.Request) {
 	atomic.AddUint64(&s.hit, 1)
 }
 
+func (s *server) image(w http.ResponseWriter, r *http.Request) {
+	u, err := strconv.Atoi(r.URL.Path[5:]) // 5 = len("/img/")
+	if err != nil {
+		http.NotFound(w, r)
+		atomic.AddUint64(&s.bad, 1)
+		return
+	}
+	if u > *nimg || u < 0 {
+		http.NotFound(w, r)
+		atomic.AddUint64(&s.bad, 1)
+		return
+	}
+	bits := s.imgCache[u]
+	if bits == nil {
+		fmt.Println("Generating image", u)
+		bits = genImage(u)
+		s.imgCache[u] = bits
+	}
+	w.Write(bits)
+	// // TODO
+	// http.NotFound(w, r)
+}
+
+func genImage(id int) []byte {
+	rander := rand.New(rand.NewSource(int64(id)))
+	bounds := image.Rect(0, 0, 100, 50)
+	img := image.NewRGBA(bounds)
+	for i := 0; i < bounds.Dx(); i++ {
+		for j := 0; j < bounds.Dy(); j++ {
+			img.Set(i, j, color.RGBA{
+				uint8(rander.Intn(255)),
+				uint8(rander.Intn(255)),
+				uint8(rander.Intn(255)),
+				255,
+			})
+		}
+	}
+	var buf bytes.Buffer
+	png.Encode(&buf, img)
+	return buf.Bytes()
+}
+
 func (s *server) redirect(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, "/page/"+pad(rand.Intn(*n)), http.StatusTemporaryRedirect)
+	log.Println("Redirecting", r.URL.String())
+	http.Redirect(w, r, "/page/"+pad(rand.Intn(s.g.Size())), http.StatusTemporaryRedirect)
 	atomic.AddUint64(&s.mis, 1)
 }
 
@@ -125,9 +164,15 @@ func (s *server) logger() {
 
 func main() {
 	flag.Parse()
+	mask = fmt.Sprintf("%%0%dd", int(math.Ceil(math.Log10(float64(*size)))))
 	runtime.GOMAXPROCS(runtime.NumCPU())
-	s := &server{g: genGraph(*l)}
+	s := &server{
+		g:        genGraph(*size, *links),
+		imgCache: make([][]byte, *nimg),
+	}
+	http.HandleFunc("/favicon.ico", http.NotFound)
 	http.HandleFunc("/page/", s.page)
+	http.HandleFunc("/img/", s.image)
 	http.HandleFunc("/", s.redirect)
 	http.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("PONG")) })
 	go s.logger()
