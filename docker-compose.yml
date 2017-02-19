@@ -1,7 +1,7 @@
 version: '2'
 services:
   origin:
-    image: cdn-origin
+    image: bign8/cdn:origin-latest
     ports:
       - 8080
 
@@ -20,7 +20,7 @@ services:
           - origin.bign8.info
 
   server:
-    image: cdn-server
+    image: bign8/cdn:server-latest
     ports:
       - 8080
 
@@ -38,6 +38,6 @@ services:
           - cdn.bign8.info
 
   client:
-    image: cdn-client
+    image: bign8/cdn:client-latest
     environment:
       TARGET: "http://origin.bign8.info"

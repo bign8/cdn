@@ -45,7 +45,7 @@ find */* -name "*.go" -print0 | xargs -0 -n1 dirname | sort -u | while read line
 
   # Generating docker container
   echo -en "\tDocker "
-  docker build --rm -t cdn-"$line":latest . | while read; do echo -n .; done
+  docker build --rm -t bign8/cdn:"$line"-latest . | while read; do echo -n .; done
   echo " Done"
 
   # Cleaning up assets
@@ -60,6 +60,7 @@ CODE=$?
 
 # # Cleanup files
 # rm Dockerfile
+# docker push bign8/cdn
 
 # Get proper exit code
 if [ $CODE == 0 ]; then
