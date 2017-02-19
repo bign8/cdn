@@ -129,6 +129,7 @@ func main() {
 	s := &server{g: genGraph(*l)}
 	http.HandleFunc("/page/", s.page)
 	http.HandleFunc("/", s.redirect)
+	http.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("PONG")) })
 	go s.logger()
 	http.ListenAndServe(":"+strconv.Itoa(*port), nil)
 }
