@@ -3,16 +3,21 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"math/rand"
 	"net/http"
 	"net/url"
 	"os"
+	"sync"
 	"time"
 
 	"golang.org/x/net/html"
 )
 
-var target = flag.String("target", os.Getenv("TARGET"), "target hostname")
+var (
+	target = flag.String("target", os.Getenv("TARGET"), "target hostname")
+	delay  = flag.Duration("delay", time.Second, "delay between page views")
+)
 
 func check(err error) {
 	if err != nil {
@@ -27,23 +32,41 @@ func main() {
 		os.Exit(1)
 	}
 
-	// TODO: use an optimal queue here instead of an array
-	queue := []string{*target}
-	for len(queue) > 0 {
-		fmt.Println("Browsing to", queue[0])
-		res, err := http.Get(queue[0])
-		check(err)
-		queue = queue[1:]
-
-		links := getLinks(res)
-
-		// Browse to random link on page
-		queue = append(queue, links[rand.Intn(len(links))])
-		time.Sleep(time.Duration(rand.Int63n(int64(time.Second))))
+	next := *target
+	for {
+		fmt.Println("Browsing to", next) // TODO: wrap this into nice stats wrapper
+		links := load(next)
+		next = links[rand.Intn(len(links))]
+		time.Sleep(time.Duration(rand.Int63n(int64(*delay))))
 	}
 }
 
-func getLinks(res *http.Response) (links []string) {
+func load(loc string) []string {
+	start := time.Now()
+	res := timeGet(loc)
+	parts, links := parse(res)
+	var wg sync.WaitGroup
+	wg.Add(len(parts))
+	for _, part := range parts {
+		go func(p string) {
+			timeGet(p).Body.Close()
+			wg.Done()
+		}(part)
+	}
+	wg.Wait()
+	log.Printf("Rendering %q took %s", loc, time.Since(start))
+	return links
+}
+
+func timeGet(loc string) *http.Response {
+	start := time.Now()
+	res, err := http.Get(loc)
+	log.Printf("Loading %q took %s", loc, time.Since(start))
+	check(err)
+	return res
+}
+
+func parse(res *http.Response) (resources, links []string) {
 	z := html.NewTokenizer(res.Body)
 	defer res.Body.Close()
 
@@ -53,16 +76,27 @@ func getLinks(res *http.Response) (links []string) {
 			return // End of the document, we're done
 		case html.StartTagToken:
 			t := z.Token()
-			if t.Data == "a" {
-				for _, a := range t.Attr {
-					if a.Key == "href" {
-						link, err := url.Parse(a.Val)
-						check(err)
-						links = append(links, res.Request.URL.ResolveReference(link).String())
-						break
-					}
-				}
+			switch t.Data {
+			case "a": // link
+				mine(res, t, &links, "href")
+			case "img": // img
+				fallthrough
+			case "script": // js
+				mine(res, t, &resources, "src")
+			case "link": // css
+				mine(res, t, &resources, "href")
 			}
+		}
+	}
+}
+
+func mine(res *http.Response, t html.Token, list *[]string, attr string) {
+	for _, a := range t.Attr {
+		if a.Key == attr {
+			link, err := url.Parse(a.Val)
+			check(err)
+			*list = append(*list, res.Request.URL.ResolveReference(link).String())
+			break
 		}
 	}
 }
