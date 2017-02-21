@@ -1,4 +1,4 @@
 FROM scratch
 ADD main /
 CMD ["/main"]
-EXPOSE 8080
+EXPOSE 8081

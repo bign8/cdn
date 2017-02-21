@@ -21,8 +21,10 @@ services:
 
   server:
     image: bign8/cdn:server-latest
+    environment:
+      TARGET: "http://origin.bign8.info"
     ports:
-      - 8080
+      - 8081
 
   server_lb:
     image: dockercloud/haproxy:1.6.3
@@ -30,6 +32,8 @@ services:
       - 82:80
     links:
       - server
+    depends_on:
+      - origin_lb
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
@@ -39,5 +43,8 @@ services:
 
   client:
     image: bign8/cdn:client-latest
+    depends_on:
+      - server_lb
+      - origin_lb
     environment:
-      TARGET: "http://origin.bign8.info"
+      TARGET: "http://cdn.bign8.info"
