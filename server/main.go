@@ -2,7 +2,7 @@ package main
 
 import (
 	"flag"
-	"fmt"
+	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -21,11 +21,26 @@ func check(err error) {
 	}
 }
 
+type cdn struct{}
+
+func (c *cdn) RoundTrip(req *http.Request) (*http.Response, error) {
+	log.Println("Proxying!", req.URL.String())
+	return nil, http.ErrSkipAltProtocol
+}
+
 func main() {
+	flag.Parse()
 	uri, err := url.Parse(*target)
 	check(err)
 	rp := httputil.NewSingleHostReverseProxy(uri)
+	CDN := &cdn{}
+
+	// Some hackery to create a man-in-the middle proxy
+	tp := http.DefaultTransport.(*http.Transport)
+	tp.RegisterProtocol("http", CDN)
+	rp.Transport = tp
+
 	http.Handle("/", rp)
-	fmt.Printf("ReverseProxy for %q serving on :%d\n", *target, *port)
+	log.Printf("ReverseProxy for %q serving on :%d\n", *target, *port)
 	check(http.ListenAndServe(":"+strconv.Itoa(*port), nil))
 }
