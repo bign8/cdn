@@ -8,6 +8,8 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+
+	"github.com/bign8/cdn/health"
 )
 
 var (
@@ -22,10 +24,13 @@ func check(err error) {
 }
 
 func main() {
+	flag.Parse()
+	health.Check()
 	uri, err := url.Parse(*target)
 	check(err)
 	rp := httputil.NewSingleHostReverseProxy(uri)
 	http.Handle("/", rp)
+	http.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("OK")) })
 	fmt.Printf("ReverseProxy for %q serving on :%d\n", *target, *port)
 	check(http.ListenAndServe(":"+strconv.Itoa(*port), nil))
 }
