@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"text/template"
 	"time"
+
+	"github.com/bign8/cdn/health"
 )
 
 var (
@@ -128,6 +130,7 @@ func (s *server) redirect(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	flag.Parse()
+	health.Check()
 	mask = fmt.Sprintf("%%0%dd", int(math.Ceil(math.Log10(float64(*size)))))
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	s := &server{
