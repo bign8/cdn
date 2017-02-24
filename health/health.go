@@ -6,23 +6,27 @@ import (
 	"os"
 )
 
-var hc = flag.String("hc", "", "Should we run a health check?")
+var (
+	hc    = flag.String("hc", "", "Should we run a health check?")
+	get   = http.DefaultClient.Get
+	exit  = os.Exit
+	write = os.Stdout.WriteString
+)
 
 // Check verifies a particular services give a 200 hc response
 func Check() {
 	flag.Parse()
 	if *hc == "" {
 		return
-	}
-	res, err := http.Get(*hc)
-	if err != nil {
-		os.Stdout.WriteString("err:" + err.Error())
-		os.Exit(1)
+	} else if res, err := get(*hc); err != nil {
+		write("err:" + err.Error())
+		exit(1)
 	} else if res.StatusCode != http.StatusOK {
-		os.Stdout.WriteString("status:" + res.Status)
-		os.Exit(1)
+		write("status:" + res.Status)
+		exit(1)
+	} else {
+		res.Body.Close()
+		write("OK")
+		exit(0)
 	}
-	res.Body.Close()
-	os.Stdout.WriteString("OK")
-	os.Exit(0)
 }
