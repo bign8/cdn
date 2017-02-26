@@ -19,8 +19,13 @@ set -o pipefail # causes pipes to fail if the input command fails
 
 # find go source directories (TODO: assert their package is main)
 find */* -name "*.go" -print0 | xargs -0 -n1 dirname | sort -u | while read line; do
-  echo -n "Processing '$line' "
   pushd $line > /dev/null
+  if [ ! -f ./Dockerfile ]; then
+    popd > /dev/null
+    continue;
+  fi
+
+  echo -n "Processing '$line' "
   # cp ../certz.crt ca-certificates.crt
   # cp ../Dockerfile Dockerfile
   #

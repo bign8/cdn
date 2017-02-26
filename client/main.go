@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "expvar"
 	"flag"
 	"fmt"
 	"log"
@@ -10,6 +11,8 @@ import (
 	"os"
 	"sync"
 	"time"
+
+	"github.com/bign8/cdn/health"
 
 	"golang.org/x/net/html"
 )
@@ -26,11 +29,12 @@ func check(err error) {
 }
 
 func main() {
-	flag.Parse()
+	health.Check()
 	if *target == "" {
 		fmt.Println("target is required")
 		os.Exit(1)
 	}
+	go http.ListenAndServe(":8082", nil)
 
 	next := *target
 	for {
