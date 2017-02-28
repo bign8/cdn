@@ -9,7 +9,7 @@ services:
   origin_lb:
     image: dockercloud/haproxy:1.6.3 # https://github.com/docker/dockercloud-haproxy
     ports:
-      - 81:80
+      - 8080:80
     links:
       - origin
     volumes:
@@ -31,7 +31,7 @@ services:
   server_lb:
     image: dockercloud/haproxy:1.6.3
     ports:
-      - 82:80
+      - 8081:80
     links:
       - server
     depends_on:
