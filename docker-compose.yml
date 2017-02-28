@@ -25,6 +25,8 @@ services:
       TARGET: "http://origin.bign8.info"
     ports:
       - 8081
+    links:
+      - redis
 
   server_lb:
     image: dockercloud/haproxy:1.6.3
@@ -48,3 +50,8 @@ services:
       - origin_lb
     environment:
       TARGET: "http://cdn.bign8.info"
+
+  redis:
+    image: redis:alpine
+    ports:
+      - 6379:6379

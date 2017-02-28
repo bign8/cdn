@@ -2,12 +2,17 @@ package main
 
 import (
 	"flag"
+	"fmt"
+	"io"
 	"log"
+	"math/rand"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"os"
 	"strconv"
+
+	redis "gopkg.in/redis.v5"
 
 	"github.com/bign8/cdn/health"
 )
@@ -25,6 +30,7 @@ func check(err error) {
 }
 
 type cdn struct {
+	red *redis.Client
 	cap int
 }
 
@@ -37,12 +43,51 @@ func main() {
 	health.Check()
 	uri, err := url.Parse(*target)
 	check(err)
+
+	host, err := os.Hostname()
+	check(err)
+
+	red := redis.NewClient(&redis.Options{Addr: "redis:6379"}) // TODO: swap back to `redis` for compose
+	check(red.Ping().Err())
+	red.SAdd("cdn-servers", host)
+
 	rp := httputil.NewSingleHostReverseProxy(uri)
 	rp.Transport = &cdn{
 		cap: *cap,
+		red: red,
 	}
+
 	http.Handle("/", rp)
 	http.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("OK")) })
+	http.HandleFunc("/test", func(w http.ResponseWriter, r *http.Request) {
+		if err := red.Incr("counter").Err(); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		n, err := red.Get("counter").Int64()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Write([]byte(fmt.Sprintf("Hey! hit %d times", n)))
+	})
+	http.HandleFunc("/other", func(w http.ResponseWriter, r *http.Request) {
+		parts, err := red.SMembers("cdn-servers").Result()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		neighbor := parts[rand.Intn(len(parts))] // TODO bign8: make sure this isn't me
+		res, err := http.Get("http://" + neighbor + ":8081/ping")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusExpectationFailed)
+			return
+		}
+		w.WriteHeader(res.StatusCode)
+		io.Copy(w, res.Body)
+		res.Body.Close()
+		w.Write([]byte(fmt.Sprintf("\nMe:%s\nOther:%s", host, neighbor)))
+	})
 	log.Printf("ReverseProxy for %q serving on :%d\n", *target, *port)
 	check(http.ListenAndServe(":"+strconv.Itoa(*port), nil))
 }
