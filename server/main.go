@@ -24,6 +24,8 @@ import (
 	"github.com/bign8/cdn/health"
 )
 
+const cdnHeader = "x-bign8-cdn"
+
 // Variables to identify the build
 var (
 	Version = "Unknown"
@@ -99,11 +101,11 @@ func (c *cdn) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	item, ok := c.cache[req.URL.Path] // TODO: respect cache timeouts
 	c.mu.RUnlock()
 
-	log.Print(c.me, "header", req.Header.Get("X-BIGN8-CDN"))
+	log.Printf("%s got header %v %v", c.me, req.Header.Get(cdnHeader), req.UserAgent())
 
 	if ok {
 		item.Send(w)
-	} else if req.Header.Get("X-BIGN8-CDN") != "" {
+	} else if req.Header.Get(cdnHeader) != "" || req.Method == http.MethodConnect || req.UserAgent() == cdnHeader {
 		log.Print(c.me, " couldn't find response for neighbor")
 		http.NotFound(w, req)
 	} else if item, ok = c.checkNeighbors(req.URL.Path); ok {
@@ -129,11 +131,12 @@ func (c *cdn) checkNeighbors(path string) (result response, found bool) {
 	fetch := func(n string, fin chan<- neighborResult) {
 		target := "http://" + n + ":" + strconv.Itoa(*port) + "/" + path
 		var r neighborResult
-		if req, err := http.NewRequest(http.MethodGet, target, nil); err != nil {
+		if req, err := http.NewRequest(http.MethodConnect, target, nil); err != nil {
 			r.err = err
 		} else {
 			req = req.WithContext(ctx)
-			req.Header.Set("X-BIGN8-CDN", c.me)
+			req.Header.Set("User-Agent", cdnHeader)
+			req.Header.Set(cdnHeader, c.me)
 			if res, err := http.DefaultClient.Do(req); err != nil {
 				r.err = err
 			} else {
