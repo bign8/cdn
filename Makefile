@@ -1,27 +1,26 @@
-.PHONY: client origin server
-all: client origin server
+VERSION=0.0.0-`git rev-parse --short HEAD`
+FLAGS=-v -ldflags "-s -w -X main.Version=${VERSION} -X main.Build=${BUILD}" -installsuffix cgo
 
-CLIENT_SOURCES=client/main.go
-client: $(CLIENT_SOURCES) client/main
+all: client/main origin/main server/main
 
-ORIGIN_SOURCE=origin/graph.go origin/image.go origin/log.go origin/main.go origin/text.go
-origin: $(CLIENT_SOURCES) origin/main
+client/main: client/Dockerfile client/*.go health/*.go
+	go test ./client
+	CGO_ENABLED=0 GOOS=linux go build ${FLAGS} -o $@ ./client
+	docker build --rm -t bign8/cdn:client-latest ./client
 
-SERVER_SOURCES=server/main.go
-client: $(SERVER_SOURCES) server/main
+origin/main: origin/Dockerfile origin/*.go health/*.go
+	go test ./origin
+	CGO_ENABLED=0 GOOS=linux go build ${FLAGS} -o $@ ./origin
+	docker build --rm -t bign8/cdn:origin-latest ./origin
 
-%/main:
-	@printf "Processing '$(subst /main,,$@)' "
-	@go test ./$(subst main,,$@) | sed -n '1!p'
-	@echo "[Verified]"
-	@printf "\tGolang "
-	@CGO_ENABLED=0 GOOS=linux go build -v -installsuffix cgo -o $@ -ldflags="-s -w" ./$(subst main,,$@) 2>&1 | awk getline | while read; do printf "."; done
-	@echo " Done!"
-	@printf "\tDocker "
-	@docker build --rm -t bign8/cdn:"$(subst /main,,$@)"-latest ./$(subst main,,$@) | while read; do printf "."; done
-	@echo " Done!"
+server/main: server/Dockerfile server/*.go health/*.go
+	go test ./server
+	CGO_ENABLED=0 GOOS=linux go build ${FLAGS} -o $@ ./server
+	docker build --rm -t bign8/cdn:server-latest ./server
 
 clean:
-	@rm -f client/main
-	@rm -f server/main
-	@rm -f origin/main
+	@if [ -f client/main ] ; then rm client/main ; fi
+	@if [ -f server/main ] ; then rm server/main ; fi
+	@if [ -f origin/main ] ; then rm origin/main ; fi
+
+.PHONY: clean all

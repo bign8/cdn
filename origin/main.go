@@ -15,7 +15,10 @@ import (
 	"github.com/bign8/cdn/health"
 )
 
+// Variables to identify the build
 var (
+	Version = "Unknown"
+
 	size    = flag.Int("size", 1000, "How many nodes to build website")
 	links   = flag.Int("link", 20, "How many links on each page")
 	images  = flag.Int("imgs", 6, "How many images on each page")
@@ -143,6 +146,7 @@ func main() {
 	http.HandleFunc("/img/", s.image)
 	http.HandleFunc("/", s.redirect)
 	http.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("PONG")) })
+	http.HandleFunc("/version", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(Version)) })
 	go s.logger()
 	http.ListenAndServe(":"+strconv.Itoa(*port), nil)
 }

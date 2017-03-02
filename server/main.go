@@ -20,7 +20,10 @@ import (
 	"github.com/bign8/cdn/health"
 )
 
+// Variables to identify the build
 var (
+	Version = "Unknown"
+
 	target = flag.String("target", os.Getenv("TARGET"), "target hostname")
 	port   = flag.Int("port", 8081, "What port to run server on")
 	cap    = flag.Int("cap", 10, "How many requests to store in cache")
@@ -108,6 +111,7 @@ func main() {
 
 	http.Handle("/", cdnHandler)
 	http.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("PONG")) })
+	http.HandleFunc("/version", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(Version)) })
 	http.HandleFunc("/test", func(w http.ResponseWriter, r *http.Request) {
 		if err := red.Incr("counter").Err(); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -127,7 +131,7 @@ func main() {
 			return
 		}
 		neighbor := parts[rand.Intn(len(parts))] // TODO bign8: make sure this isn't me
-		res, err := http.Get("http://" + neighbor + ":8081/ping")
+		res, err := http.Get("http://" + neighbor + ":8081/version")
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusExpectationFailed)
 			return

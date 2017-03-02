@@ -17,7 +17,10 @@ import (
 	"golang.org/x/net/html"
 )
 
+// Variables to identify the build
 var (
+	Version = "Unknown"
+
 	target = flag.String("target", os.Getenv("TARGET"), "target hostname")
 	delay  = flag.Duration("delay", time.Second, "delay between page views")
 )
@@ -34,6 +37,8 @@ func main() {
 		fmt.Println("target is required")
 		os.Exit(1)
 	}
+	http.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("PONG")) })
+	http.HandleFunc("/version", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(Version)) })
 	go http.ListenAndServe(":8082", nil)
 
 	next := *target
