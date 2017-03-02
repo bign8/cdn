@@ -84,6 +84,7 @@ func (c *cdn) RoundTrip(req *http.Request) (*http.Response, error) {
 	log.Println("Proxying!", req.URL.String())
 	res, err := http.DefaultTransport.RoundTrip(req)
 	if err == nil && res.StatusCode == http.StatusOK { // TODO: trap other headers and respect cache codes
+		log.Println(c.me, " Got request from origin and it was GOOD!!! #caching")
 		var r response
 		r, err = newResponse(res)
 		if err != nil {
@@ -92,6 +93,8 @@ func (c *cdn) RoundTrip(req *http.Request) (*http.Response, error) {
 		c.mu.Lock()
 		c.cache[req.URL.Path] = r
 		c.mu.Unlock()
+	} else {
+		log.Printf("%s :'( bad request from origin' %s %s", c.me, res.Status, err)
 	}
 	return res, err
 }
@@ -101,17 +104,15 @@ func (c *cdn) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	item, ok := c.cache[req.URL.Path] // TODO: respect cache timeouts
 	c.mu.RUnlock()
 
-	log.Printf("%s got header %v %v", c.me, req.Header.Get(cdnHeader), req.UserAgent())
-
-	if ok {
+	if ok { // We have the data!!!
 		item.Send(w)
-	} else if req.Header.Get(cdnHeader) != "" || req.Method == http.MethodConnect || req.UserAgent() == cdnHeader {
+	} else if req.Header.Get(cdnHeader) != "" {
 		log.Print(c.me, " couldn't find response for neighbor")
-		http.NotFound(w, req)
+		http.NotFound(w, req) // Request was from other CDN server, don't ask others or origin
 	} else if item, ok = c.checkNeighbors(req.URL.Path); ok {
-		item.Send(w)
+		item.Send(w) // Found request on neighbor, sending response
 	} else {
-		c.rp.ServeHTTP(w, req)
+		c.rp.ServeHTTP(w, req) // Couldn't find it anywhere, sending to origin
 	}
 }
 
@@ -129,18 +130,19 @@ func (c *cdn) checkNeighbors(path string) (result response, found bool) {
 
 	// Parallel fetching function
 	fetch := func(n string, fin chan<- neighborResult) {
-		target := "http://" + n + ":" + strconv.Itoa(*port) + "/" + path
+		target := "http://" + n + ":" + strconv.Itoa(*port) + path
 		var r neighborResult
-		if req, err := http.NewRequest(http.MethodConnect, target, nil); err != nil {
+		if req, err := http.NewRequest(http.MethodGet, target, nil); err != nil {
 			r.err = err
 		} else {
 			req = req.WithContext(ctx)
-			req.Header.Set("User-Agent", cdnHeader)
 			req.Header.Set(cdnHeader, c.me)
 			if res, err := http.DefaultClient.Do(req); err != nil {
 				r.err = err
-			} else {
+			} else if res.StatusCode == http.StatusOK {
 				r.res, r.err = newResponse(res)
+			} else {
+				r.err = fmt.Errorf("Whoa! bad request man: %s", res.Status)
 			}
 		}
 		fin <- r
@@ -155,13 +157,13 @@ func (c *cdn) checkNeighbors(path string) (result response, found bool) {
 	// fetch all results until found
 	for i := 0; i < len(neighbors); i++ {
 		back := <-results
-		if !found && back.err == nil && back.res.code == http.StatusOK {
+		if !found && back.err == nil {
 			log.Print(c.me, "Found response on neighbor")
 			done()
 			found = true
 			result = back.res
 		} else if back.err != nil {
-			log.Print(c.me, "Problem fetching from neighbour")
+			log.Print(c.me, "Problem fetching from neighbor", back.err)
 		}
 	}
 	done()
