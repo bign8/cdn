@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"flag"
 	"fmt"
 	"io"
@@ -44,6 +45,18 @@ type response struct {
 	body []byte
 }
 
+func newResponse(res *http.Response) (r response, err error) {
+	r = response{
+		code: res.StatusCode,
+		head: res.Header,
+	}
+	r.body, err = ioutil.ReadAll(res.Body)
+	if err == nil {
+		res.Body = ioutil.NopCloser(bytes.NewReader(r.body))
+	}
+	return r, err
+}
+
 func (r *response) Send(w http.ResponseWriter) {
 	for key, value := range r.head {
 		w.Header()[key] = value
@@ -69,15 +82,11 @@ func (c *cdn) RoundTrip(req *http.Request) (*http.Response, error) {
 	log.Println("Proxying!", req.URL.String())
 	res, err := http.DefaultTransport.RoundTrip(req)
 	if err == nil && res.StatusCode == http.StatusOK { // TODO: trap other headers and respect cache codes
-		r := response{
-			code: res.StatusCode,
-			head: res.Header,
-		}
-		r.body, err = ioutil.ReadAll(res.Body)
+		var r response
+		r, err = newResponse(res)
 		if err != nil {
 			return res, err
 		}
-		res.Body = ioutil.NopCloser(bytes.NewReader(r.body))
 		c.mu.Lock()
 		c.cache[req.URL.Path] = r
 		c.mu.Unlock()
@@ -89,11 +98,71 @@ func (c *cdn) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	c.mu.RLock()
 	item, ok := c.cache[req.URL.Path] // TODO: respect cache timeouts
 	c.mu.RUnlock()
+
+	log.Print(c.me, "header", req.Header.Get("X-BIGN8-CDN"))
+
 	if ok {
+		item.Send(w)
+	} else if req.Header.Get("X-BIGN8-CDN") != "" {
+		log.Print(c.me, " couldn't find response for neighbor")
+		http.NotFound(w, req)
+	} else if item, ok = c.checkNeighbors(req.URL.Path); ok {
 		item.Send(w)
 	} else {
 		c.rp.ServeHTTP(w, req)
 	}
+}
+
+type neighborResult struct {
+	res response
+	err error
+}
+
+func (c *cdn) checkNeighbors(path string) (result response, found bool) {
+	log.Print("TODO: Proxy request to neighbors!")
+	c.ringMu.RLock()
+	neighbors := c.ring[:]
+	c.ringMu.RUnlock()
+	ctx, done := context.WithTimeout(context.Background(), time.Second*5)
+
+	// Parallel fetching function
+	fetch := func(n string, fin chan<- neighborResult) {
+		target := "http://" + n + ":" + strconv.Itoa(*port) + "/" + path
+		var r neighborResult
+		if req, err := http.NewRequest(http.MethodGet, target, nil); err != nil {
+			r.err = err
+		} else {
+			req = req.WithContext(ctx)
+			req.Header.Set("X-BIGN8-CDN", c.me)
+			if res, err := http.DefaultClient.Do(req); err != nil {
+				r.err = err
+			} else {
+				r.res, r.err = newResponse(res)
+			}
+		}
+		fin <- r
+	}
+
+	// Fetch requests in paralell
+	results := make(chan neighborResult, len(neighbors))
+	for _, neighbor := range neighbors {
+		go fetch(neighbor, results)
+	}
+
+	// fetch all results until found
+	for i := 0; i < len(neighbors); i++ {
+		back := <-results
+		if !found && back.err == nil && back.res.code == http.StatusOK {
+			log.Print(c.me, "Found response on neighbor")
+			done()
+			found = true
+			result = back.res
+		} else if back.err != nil {
+			log.Print(c.me, "Problem fetching from neighbour")
+		}
+	}
+	done()
+	return result, found
 }
 
 func (c *cdn) monitorNeighbors() {
@@ -123,7 +192,7 @@ func (c *cdn) monitorNeighbors() {
 			c.ring = result
 			c.ringMu.Unlock()
 		} else {
-			log.Print(c.me, "is found no update for server list")
+			// log.Print(c.me, "is found no update for server list")
 		}
 
 		// Wait for another cycle // TODO: listen to pub-sub for updates or something
@@ -154,7 +223,12 @@ func main() {
 
 	http.Handle("/", cdnHandler)
 	http.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("PONG")) })
-	http.HandleFunc("/version", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(Version)) })
+	http.HandleFunc("/version", func(w http.ResponseWriter, r *http.Request) {
+		if hdr := r.Header.Get("X-BIGN8-CDN"); hdr != "" {
+			log.Printf("%s: getting version request from: %v", host, hdr)
+		}
+		w.Write([]byte(Version))
+	})
 	http.HandleFunc("/test", func(w http.ResponseWriter, r *http.Request) {
 		if err := red.Incr("counter").Err(); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -174,7 +248,9 @@ func main() {
 			return
 		}
 		neighbor := parts[rand.Intn(len(parts))] // TODO bign8: make sure this isn't me
-		res, err := http.Get("http://" + neighbor + ":8081/version")
+		req, _ := http.NewRequest("GET", "http://"+neighbor+":8081/version", nil)
+		req.Header.Set("X-BIGN8-CDN", host)
+		res, err := http.DefaultClient.Do(req.WithContext(context.TODO()))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusExpectationFailed)
 			return
