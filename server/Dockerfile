@@ -1,3 +1,4 @@
+# Documentation: https://docs.docker.com/engine/reference/builder/
 FROM scratch
 ADD main /
 CMD ["/main"]
