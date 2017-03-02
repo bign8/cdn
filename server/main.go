@@ -12,8 +12,11 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"os"
+	"sort"
 	"strconv"
+	"strings"
 	"sync"
+	"time"
 
 	redis "gopkg.in/redis.v5"
 
@@ -50,12 +53,16 @@ func (r *response) Send(w http.ResponseWriter) {
 }
 
 type cdn struct {
+	me  string
 	rp  *httputil.ReverseProxy
 	red *redis.Client
 	cap int
 
 	cache map[string]response
 	mu    sync.RWMutex
+
+	ring   []string
+	ringMu sync.RWMutex
 }
 
 func (c *cdn) RoundTrip(req *http.Request) (*http.Response, error) {
@@ -89,6 +96,41 @@ func (c *cdn) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+func (c *cdn) monitorNeighbors() {
+	var last string
+	for {
+		// Get set from redis
+		servers, err := c.red.SMembers("cdn-servers").Result()
+		if err != nil {
+			log.Print("Cannot fetch neighbor set:", err)
+			continue
+		}
+
+		// Generate usable list for consumers
+		result := make([]string, 0, len(servers)-1)
+		for _, server := range servers {
+			if server != c.me {
+				result = append(result, server)
+			}
+		}
+		sort.Strings(result)
+
+		// Use string representation of neighbors to determine if update is necessary
+		if next := strings.Join(result, ", "); next != last {
+			log.Print(c.me, "is updating server list: ["+next+"]")
+			last = next
+			c.ringMu.Lock()
+			c.ring = result
+			c.ringMu.Unlock()
+		} else {
+			log.Print(c.me, "is found no update for server list")
+		}
+
+		// Wait for another cycle // TODO: listen to pub-sub for updates or something
+		time.Sleep(time.Second * 5)
+	}
+}
+
 func main() {
 	health.Check()
 	uri, err := url.Parse(*target)
@@ -102,6 +144,7 @@ func main() {
 	red.SAdd("cdn-servers", host)
 
 	cdnHandler := &cdn{
+		me:    host,
 		rp:    httputil.NewSingleHostReverseProxy(uri),
 		cap:   *cap,
 		red:   red,
@@ -141,6 +184,9 @@ func main() {
 		res.Body.Close()
 		w.Write([]byte(fmt.Sprintf("\nMe:%s\nOther:%s", host, neighbor)))
 	})
+
+	// Actually start the server
 	log.Printf("ReverseProxy for %q serving on :%d\n", *target, *port)
+	go cdnHandler.monitorNeighbors()
 	check(http.ListenAndServe(":"+strconv.Itoa(*port), nil))
 }
