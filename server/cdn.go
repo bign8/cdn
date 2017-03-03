@@ -9,6 +9,11 @@ import (
 	redis "gopkg.in/redis.v5"
 )
 
+var (
+	_ http.Handler      = (*cdn)(nil)
+	_ http.RoundTripper = (*cdn)(nil)
+)
+
 type cdn struct {
 	me  string
 	rp  *httputil.ReverseProxy
