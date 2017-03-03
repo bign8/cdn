@@ -19,7 +19,8 @@ import (
 
 	redis "gopkg.in/redis.v5"
 
-	"github.com/bign8/cdn/health"
+	"github.com/bign8/cdn/util"
+	"github.com/bign8/cdn/util/health"
 )
 
 const cdnHeader = "x-bign8-cdn"
@@ -218,8 +219,8 @@ func main() {
 	cdnHandler.rp.Transport = cdnHandler
 
 	http.Handle("/", cdnHandler)
-	http.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("PONG")) })
-	http.HandleFunc("/version", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(Version)) })
+	http.HandleFunc("/ping", util.Static("PONG"))
+	http.HandleFunc("/version", util.Static(Version))
 
 	// Actually start the server
 	log.Printf("ReverseProxy for %q serving on :%d\n", *target, *port)

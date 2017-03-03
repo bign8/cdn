@@ -12,7 +12,8 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/bign8/cdn/health"
+	"github.com/bign8/cdn/util"
+	"github.com/bign8/cdn/util/health"
 )
 
 // Variables to identify the build
@@ -145,8 +146,8 @@ func main() {
 	http.HandleFunc("/page/", s.page)
 	http.HandleFunc("/img/", s.image)
 	http.HandleFunc("/", s.redirect)
-	http.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("PONG")) })
-	http.HandleFunc("/version", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(Version)) })
+	http.HandleFunc("/ping", util.Static("PONG"))
+	http.HandleFunc("/version", util.Static("Version"))
 	go s.logger()
 	http.ListenAndServe(":"+strconv.Itoa(*port), nil)
 }

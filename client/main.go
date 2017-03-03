@@ -12,9 +12,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bign8/cdn/health"
-
 	"golang.org/x/net/html"
+
+	"github.com/bign8/cdn/util"
+	"github.com/bign8/cdn/util/health"
 )
 
 // Variables to identify the build
@@ -37,8 +38,8 @@ func main() {
 		fmt.Println("target is required")
 		os.Exit(1)
 	}
-	http.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("PONG")) })
-	http.HandleFunc("/version", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(Version)) })
+	http.HandleFunc("/ping", util.Static("PONG"))
+	http.HandleFunc("/version", util.Static("Version"))
 	go http.ListenAndServe(":8082", nil)
 
 	next := *target
