@@ -5,20 +5,10 @@ GOFLAGS=-i -v -ldflags "-s -w -X main.Version=${VERSION}" -installsuffix cgo
 
 all: client/main origin/main server/main
 
-client/main: client/Dockerfile client/*.go ${UTILS}
-	go test ./client
-	CGO_ENABLED=0 GOOS=linux go build ${GOFLAGS} -o $@ ./client
-	docker build -q --rm -t bign8/cdn:client-latest ./client
-
-origin/main: origin/Dockerfile origin/*.go ${UTILS}
-	go test ./origin
-	CGO_ENABLED=0 GOOS=linux go build ${GOFLAGS} -o $@ ./origin
-	docker build -q --rm -t bign8/cdn:origin-latest ./origin
-
-server/main: server/Dockerfile server/*.go ${UTILS}
-	go test ./server
-	CGO_ENABLED=0 GOOS=linux go build ${GOFLAGS} -o $@ ./server
-	docker build -q --rm -t bign8/cdn:server-latest ./server
+%/main: %/Dockerfile %/*.go ${UTILS}
+	go test ./$*
+	CGO_ENABLED=0 GOOS=linux go build ${GOFLAGS} -o $@ ./$*
+	docker build --rm -t bign8/cdn:$*-latest ./$*
 
 clean:
 	@if [ -f client/main ] ; then rm client/main ; fi
