@@ -19,16 +19,12 @@ import (
 
 	redis "gopkg.in/redis.v5"
 
-	"github.com/bign8/cdn/util"
 	"github.com/bign8/cdn/util/health"
 )
 
 const cdnHeader = "x-bign8-cdn"
 
-// Variables to identify the build
 var (
-	Version = "Unknown"
-
 	target = flag.String("target", os.Getenv("TARGET"), "target hostname")
 	port   = flag.Int("port", 8081, "What port to run server on")
 	cap    = flag.Int("cap", 20, "How many requests to store in cache")
@@ -217,10 +213,7 @@ func main() {
 		cache: make(map[string]response),
 	}
 	cdnHandler.rp.Transport = cdnHandler
-
 	http.Handle("/", cdnHandler)
-	http.HandleFunc("/ping", util.Static("PONG"))
-	http.HandleFunc("/version", util.Static(Version))
 
 	// Actually start the server
 	log.Printf("ReverseProxy for %q serving on :%d\n", *target, *port)

@@ -1,7 +1,7 @@
 # Documentation: https://www.gnu.org/software/make/manual/html_node/index.html
 VERSION=0.0.0.`git rev-parse --short HEAD`
 UTILS=$(shell find util -name '*.go')
-GOFLAGS=-i -v -ldflags "-s -w -X main.Version=${VERSION}" -installsuffix cgo
+GOFLAGS=-i -v -ldflags "-s -w -X github.com/bign8/cdn/util/health.Version=${VERSION}" -installsuffix cgo
 
 all: client/main origin/main server/main
 
