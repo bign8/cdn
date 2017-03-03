@@ -3,12 +3,10 @@ package main
 import (
 	"bytes"
 	"context"
+	"errors"
 	"flag"
-	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
-	"math/rand"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -32,7 +30,7 @@ var (
 
 	target = flag.String("target", os.Getenv("TARGET"), "target hostname")
 	port   = flag.Int("port", 8081, "What port to run server on")
-	cap    = flag.Int("cap", 10, "How many requests to store in cache")
+	cap    = flag.Int("cap", 20, "How many requests to store in cache")
 )
 
 func check(err error) {
@@ -81,10 +79,8 @@ type cdn struct {
 }
 
 func (c *cdn) RoundTrip(req *http.Request) (*http.Response, error) {
-	log.Println("Proxying!", req.URL.String())
 	res, err := http.DefaultTransport.RoundTrip(req)
 	if err == nil && res.StatusCode == http.StatusOK { // TODO: trap other headers and respect cache codes
-		log.Println(c.me, " Got request from origin and it was GOOD!!! #caching")
 		var r response
 		r, err = newResponse(res)
 		if err != nil {
@@ -93,8 +89,6 @@ func (c *cdn) RoundTrip(req *http.Request) (*http.Response, error) {
 		c.mu.Lock()
 		c.cache[req.URL.Path] = r
 		c.mu.Unlock()
-	} else {
-		log.Printf("%s :'( bad request from origin' %s %s", c.me, res.Status, err)
 	}
 	return res, err
 }
@@ -107,7 +101,7 @@ func (c *cdn) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if ok { // We have the data!!!
 		item.Send(w)
 	} else if req.Header.Get(cdnHeader) != "" {
-		log.Print(c.me, " couldn't find response for neighbor")
+		log.Print(c.me + " couldn't find response for neighbor")
 		http.NotFound(w, req) // Request was from other CDN server, don't ask others or origin
 	} else if item, ok = c.checkNeighbors(req.URL.Path); ok {
 		item.Send(w) // Found request on neighbor, sending response
@@ -122,7 +116,6 @@ type neighborResult struct {
 }
 
 func (c *cdn) checkNeighbors(path string) (result response, found bool) {
-	log.Print("TODO: Proxy request to neighbors!")
 	c.ringMu.RLock()
 	neighbors := c.ring[:]
 	c.ringMu.RUnlock()
@@ -142,7 +135,7 @@ func (c *cdn) checkNeighbors(path string) (result response, found bool) {
 			} else if res.StatusCode == http.StatusOK {
 				r.res, r.err = newResponse(res)
 			} else {
-				r.err = fmt.Errorf("Whoa! bad request man: %s", res.Status)
+				r.err = errors.New("fetch: bad response: " + res.Status)
 			}
 		}
 		fin <- r
@@ -158,12 +151,12 @@ func (c *cdn) checkNeighbors(path string) (result response, found bool) {
 	for i := 0; i < len(neighbors); i++ {
 		back := <-results
 		if !found && back.err == nil {
-			log.Print(c.me, "Found response on neighbor")
+			log.Print(c.me + " Found response on neighbor")
 			done()
 			found = true
 			result = back.res
-		} else if back.err != nil {
-			log.Print(c.me, "Problem fetching from neighbor", back.err)
+		} else if !found && back.err != nil {
+			log.Print(c.me + " Problem fetching from neighbor " + back.err.Error())
 		}
 	}
 	done()
@@ -176,7 +169,7 @@ func (c *cdn) monitorNeighbors() {
 		// Get set from redis
 		servers, err := c.red.SMembers("cdn-servers").Result()
 		if err != nil {
-			log.Print("Cannot fetch neighbor set:", err)
+			log.Print(c.me + " Cannot fetch neighbor set: " + err.Error())
 			continue
 		}
 
@@ -191,13 +184,11 @@ func (c *cdn) monitorNeighbors() {
 
 		// Use string representation of neighbors to determine if update is necessary
 		if next := strings.Join(result, ", "); next != last {
-			log.Print(c.me, "is updating server list: ["+next+"]")
+			log.Print(c.me + " is updating server list: [" + next + "]")
 			last = next
 			c.ringMu.Lock()
 			c.ring = result
 			c.ringMu.Unlock()
-		} else {
-			// log.Print(c.me, "is found no update for server list")
 		}
 
 		// Wait for another cycle // TODO: listen to pub-sub for updates or something
@@ -228,43 +219,7 @@ func main() {
 
 	http.Handle("/", cdnHandler)
 	http.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("PONG")) })
-	http.HandleFunc("/version", func(w http.ResponseWriter, r *http.Request) {
-		if hdr := r.Header.Get("X-BIGN8-CDN"); hdr != "" {
-			log.Printf("%s: getting version request from: %v", host, hdr)
-		}
-		w.Write([]byte(Version))
-	})
-	http.HandleFunc("/test", func(w http.ResponseWriter, r *http.Request) {
-		if err := red.Incr("counter").Err(); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		n, err := red.Get("counter").Int64()
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.Write([]byte(fmt.Sprintf("Hey! hit %d times", n)))
-	})
-	http.HandleFunc("/other", func(w http.ResponseWriter, r *http.Request) {
-		parts, err := red.SMembers("cdn-servers").Result()
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		neighbor := parts[rand.Intn(len(parts))] // TODO bign8: make sure this isn't me
-		req, _ := http.NewRequest("GET", "http://"+neighbor+":8081/version", nil)
-		req.Header.Set("X-BIGN8-CDN", host)
-		res, err := http.DefaultClient.Do(req.WithContext(context.TODO()))
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusExpectationFailed)
-			return
-		}
-		w.WriteHeader(res.StatusCode)
-		io.Copy(w, res.Body)
-		res.Body.Close()
-		w.Write([]byte(fmt.Sprintf("\nMe:%s\nOther:%s", host, neighbor)))
-	})
+	http.HandleFunc("/version", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(Version)) })
 
 	// Actually start the server
 	log.Printf("ReverseProxy for %q serving on :%d\n", *target, *port)

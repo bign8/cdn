@@ -1,6 +1,6 @@
 # Documentation: https://www.gnu.org/software/make/manual/html_node/index.html
 VERSION=0.0.0.`git rev-parse --short HEAD`
-FLAGS=-v -ldflags "-s -w -X main.Version=${VERSION} -X main.Build=${BUILD}" -installsuffix cgo
+FLAGS=-i -v -ldflags "-s -w -X main.Version=${VERSION}" -installsuffix cgo
 
 all: client/main origin/main server/main
 
