@@ -9,7 +9,7 @@ Topics are based on [Algorithmic Nuggets in Content Delivery](https://people.cs.
   * [Go](https://golang.org/dl/)
   * [Docker](https://www.docker.com/products/overview)
   * [Docker Compose](https://docs.docker.com/compose/install/)
-2. Run `gen.sh` to generate containers
+2. Run `make` to generate containers
 3. Run `docker-compose up` to start the environment
 4. Run `docker-compose scale origin=5` to scale nodes as desired
 

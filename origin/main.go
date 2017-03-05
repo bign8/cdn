@@ -12,7 +12,7 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/bign8/cdn/health"
+	"github.com/bign8/cdn/util/health"
 )
 
 var (
@@ -142,7 +142,6 @@ func main() {
 	http.HandleFunc("/page/", s.page)
 	http.HandleFunc("/img/", s.image)
 	http.HandleFunc("/", s.redirect)
-	http.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("PONG")) })
 	go s.logger()
 	http.ListenAndServe(":"+strconv.Itoa(*port), nil)
 }

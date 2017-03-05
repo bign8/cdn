@@ -13,17 +13,26 @@ function waitFor () {
   done
 }
 
+# Tail logs
+function tail () {
+  docker-compose logs -f client server origin
+  exit
+}
+
 # Fire up origin
 docker-compose up -d origin origin_lb
 docker-compose scale origin=3
-waitFor localhost:81/ping PONG
+waitFor localhost:8080/ping PONG
+if [ $1 == "origin" ]; then tail; fi
 
-# TODO: Fire up CDN
-# docker-compose up -d server server_lb
+# Fire up CDN
+docker-compose up -d server server_lb
+docker-compose scale server=3
+waitFor localhost:8081/ping PONG
+if [ $1 == "server" ]; then tail; fi
 
 # Fire up client
 docker-compose up -d client
 docker-compose scale client=3
 
-# Tail logs
-docker-compose logs -f client server origin
+tail
