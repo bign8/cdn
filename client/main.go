@@ -12,9 +12,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bign8/cdn/health"
-
 	"golang.org/x/net/html"
+
+	"github.com/bign8/cdn/util/health"
 )
 
 var (
