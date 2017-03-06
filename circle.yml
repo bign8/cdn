@@ -2,6 +2,11 @@ machine:
   services:
     - docker
 
+dependencies:
+  override:
+    - curl https://glide.sh/get | sh
+    - glide i -v
+
 test:
   override:
     # './...' is a relative pattern which means all subdirectories
