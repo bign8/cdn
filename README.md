@@ -1,4 +1,7 @@
 # CDN
+[![CircleCI](https://circleci.com/gh/bign8/cdn.svg?style=svg)](https://circleci.com/gh/bign8/cdn)
+[![Go Report Card](https://goreportcard.com/badge/github.com/bign8/cdn)](https://goreportcard.com/report/github.com/bign8/cdn)
+
 This project is to demonstrate the internals of a CDN.
 
 Topics are based on [Algorithmic Nuggets in Content Delivery](https://people.cs.umass.edu/~ramesh/Site/HOME_files/CCRpaper_1.pdf)
@@ -10,8 +13,7 @@ Topics are based on [Algorithmic Nuggets in Content Delivery](https://people.cs.
   * [Docker](https://www.docker.com/products/overview)
   * [Docker Compose](https://docs.docker.com/compose/install/)
 2. Run `make` to generate containers
-3. Run `docker-compose up` to start the environment
-4. Run `docker-compose scale origin=5` to scale nodes as desired
+3. Run `./run.sh` to start the environment
 
 ## Pieces
 
