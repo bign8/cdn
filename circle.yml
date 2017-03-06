@@ -1,0 +1,8 @@
+machine:
+  services:
+    - docker
+
+test:
+  override:
+    # './...' is a relative pattern which means all subdirectories
+    - go test -v -race ./...
