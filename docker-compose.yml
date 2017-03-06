@@ -2,7 +2,7 @@
 version: '2'
 services:
   origin:
-    image: bign8/cdn:origin-latest
+    image: bign8/cdn/origin:latest
     ports:
       - 8080
 
@@ -21,7 +21,7 @@ services:
           - origin.bign8.info
 
   server:
-    image: bign8/cdn:server-latest
+    image: bign8/cdn/server:latest
     environment:
       TARGET: "http://origin.bign8.info"
     ports:
@@ -45,7 +45,7 @@ services:
           - cdn.bign8.info
 
   client:
-    image: bign8/cdn:client-latest
+    image: bign8/cdn/client:latest
     depends_on:
       - server_lb
       - origin_lb
@@ -56,3 +56,11 @@ services:
     image: redis:alpine
     ports:
       - 6379:6379
+
+  ui:
+    image: bign8/cdn/ui:latest
+    depends_on:
+      - server
+      - origin
+    ports:
+      - 8083:8083
