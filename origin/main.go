@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/bign8/cdn/util/health"
+	"github.com/bign8/cdn/util/stats"
 )
 
 var (
@@ -60,7 +61,7 @@ var t = template.Must(template.New("page").Parse(`<!DOCTYPE html>
 type server struct {
 	g        graph
 	imgCache [][]byte
-	stat     stats
+	stat     *stats.Stats
 }
 
 func (s *server) page(w http.ResponseWriter, r *http.Request) {
@@ -68,7 +69,7 @@ func (s *server) page(w http.ResponseWriter, r *http.Request) {
 	u, err := strconv.Atoi(r.URL.Path[6:]) // 6 = len("/page/")
 	if err != nil {
 		http.NotFound(w, r)
-		s.stat.inc("bad")
+		s.stat.Inc("bad")
 		return
 	}
 	if u > s.g.Size() || u < 0 {
@@ -97,19 +98,19 @@ func (s *server) page(w http.ResponseWriter, r *http.Request) {
 		log.Fatal(err)
 	}
 	// log.Printf("%s %s", r.URL.Path, time.Since(now))
-	s.stat.inc("hit")
+	s.stat.Inc("hit")
 }
 
 func (s *server) image(w http.ResponseWriter, r *http.Request) {
 	u, err := strconv.Atoi(r.URL.Path[5:]) // 5 = len("/img/")
 	if err != nil {
 		http.NotFound(w, r)
-		s.stat.inc("bad")
+		s.stat.Inc("bad")
 		return
 	}
 	if u > *nimg || u < 0 {
 		http.NotFound(w, r)
-		s.stat.inc("bad")
+		s.stat.Inc("bad")
 		return
 	}
 	bits := s.imgCache[u]
@@ -119,13 +120,13 @@ func (s *server) image(w http.ResponseWriter, r *http.Request) {
 		s.imgCache[u] = bits
 	}
 	w.Write(bits)
-	s.stat.inc("img")
+	s.stat.Inc("img")
 }
 
 func (s *server) redirect(w http.ResponseWriter, r *http.Request) {
 	log.Println("Redirecting", r.URL.String())
 	http.Redirect(w, r, "/page/"+pad(rand.Intn(s.g.Size())), http.StatusTemporaryRedirect)
-	s.stat.inc("mis")
+	s.stat.Inc("mis")
 }
 
 func main() {
@@ -136,12 +137,12 @@ func main() {
 	s := &server{
 		g:        genGraph(*size, *links),
 		imgCache: make([][]byte, *nimg),
-		stat:     newStats(),
+		stat:     stats.NewStats(),
 	}
 	http.HandleFunc("/favicon.ico", http.NotFound)
 	http.HandleFunc("/page/", s.page)
 	http.HandleFunc("/img/", s.image)
 	http.HandleFunc("/", s.redirect)
-	go s.logger()
+	go s.stat.Report("origin", time.Second)
 	http.ListenAndServe(":"+strconv.Itoa(*port), nil)
 }

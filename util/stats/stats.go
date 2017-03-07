@@ -21,8 +21,8 @@ type Stats struct {
 }
 
 // NewStats constructs a new stats object
-func NewStats() Stats {
-	return Stats{
+func NewStats() *Stats {
+	return &Stats{
 		totals: make(map[string]uint64),
 		nums:   make(map[string]uint64),
 	}
