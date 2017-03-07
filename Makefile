@@ -10,10 +10,13 @@ all: client/main origin/main server/main ui/main
 	CGO_ENABLED=0 GOOS=linux go build ${GOFLAGS} -o $@ ./$*
 	docker build --rm -t bign8/cdn/$*:latest ./$*
 
+test:
+	go test $$(glide nv)
+
 clean:
 	@if [ -f client/main ] ; then rm client/main ; fi
 	@if [ -f server/main ] ; then rm server/main ; fi
 	@if [ -f origin/main ] ; then rm origin/main ; fi
 	@if [ -f ui/main ] ; then rm ui/main ; fi
 
-.PHONY: clean all
+.PHONY: clean all test

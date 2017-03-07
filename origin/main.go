@@ -7,6 +7,7 @@ import (
 	"math"
 	"math/rand"
 	"net/http"
+	"os"
 	"runtime"
 	"strconv"
 	"text/template"
@@ -134,15 +135,19 @@ func main() {
 	health.Check()
 	mask = fmt.Sprintf("%%0%dd", int(math.Ceil(math.Log10(float64(*size)))))
 	runtime.GOMAXPROCS(runtime.NumCPU())
+	host, err := os.Hostname()
+	if err != nil {
+		panic(err)
+	}
 	s := &server{
 		g:        genGraph(*size, *links),
 		imgCache: make([][]byte, *nimg),
-		stat:     stats.NewStats(),
+		stat:     stats.NewStats("origin."+host, nil),
 	}
 	http.HandleFunc("/favicon.ico", http.NotFound)
 	http.HandleFunc("/page/", s.page)
 	http.HandleFunc("/img/", s.image)
 	http.HandleFunc("/", s.redirect)
-	go s.stat.Report("origin", time.Second)
+	go s.stat.Report(time.Second)
 	http.ListenAndServe(":"+strconv.Itoa(*port), nil)
 }

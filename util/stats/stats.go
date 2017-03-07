@@ -1,11 +1,14 @@
 package stats
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"sort"
 	"sync"
 	"time"
+
+	redis "gopkg.in/redis.v3"
 )
 
 type stat struct {
@@ -18,13 +21,17 @@ type Stats struct {
 	totals map[string]uint64
 	nums   map[string]uint64
 	nuMu   sync.Mutex
+	name   string
+	conn   *redis.Client
 }
 
 // NewStats constructs a new stats object
-func NewStats() *Stats {
+func NewStats(name string, conn *redis.Client) *Stats {
 	return &Stats{
 		totals: make(map[string]uint64),
 		nums:   make(map[string]uint64),
+		name:   name,
+		conn:   conn,
 	}
 }
 
@@ -59,15 +66,23 @@ func (s *Stats) String() string {
 	for _, key := range keys {
 		batch = append(batch, fmt.Sprintf("%s(%d)%d", key, clone[key].More, clone[key].Total))
 	}
-	// TODO: serialize clone and push to redis
+	if s.conn != nil {
+		bits, err := json.Marshal(clone)
+		if err != nil {
+			panic(err)
+		}
+		if err = s.conn.Set(s.name, string(bits), time.Second).Err(); err != nil {
+			panic(err)
+		}
+	}
 	return fmt.Sprintf("all:%d; VPS(new)total: %s", all, batch) // Value per second
 }
 
 // Report stores data every interval with name
-func (s *Stats) Report(name string, interval time.Duration) {
+func (s *Stats) Report(interval time.Duration) {
 	for c := time.Tick(interval); ; <-c {
 		if line := s.String(); line != "" {
-			log.Printf("%s: %s", name, line)
+			log.Printf("%s: %s", s.name, line)
 		}
 	}
 }
