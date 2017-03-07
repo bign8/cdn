@@ -39,12 +39,15 @@ func (s *Stats) String() string {
 	s.nuMu.Lock()
 	var all uint64
 	keys := make([]string, 0, len(s.nums))
-	clone := make(map[string]uint64, len(s.nums))
+	clone := make(map[string]stat, len(s.nums))
 	for key, value := range s.nums {
 		keys = append(keys, key)
 		all += value
-		clone[key] = value
 		s.totals[key] += value
+		clone[key] = stat{
+			More:  value,
+			Total: s.totals[key],
+		}
 		s.nums[key] = 0
 	}
 	s.nuMu.Unlock()
@@ -54,8 +57,9 @@ func (s *Stats) String() string {
 	sort.Strings(keys)
 	batch := make([]string, 0, len(keys))
 	for _, key := range keys {
-		batch = append(batch, fmt.Sprintf("%s(%d)%d", key, clone[key], s.totals[key]))
+		batch = append(batch, fmt.Sprintf("%s(%d)%d", key, clone[key].More, clone[key].Total))
 	}
+	// TODO: serialize clone and push to redis
 	return fmt.Sprintf("all:%d; VPS(new)total: %s", all, batch) // Value per second
 }
 
