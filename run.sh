@@ -21,6 +21,8 @@ function tail () {
   exit
 }
 
+if [ $1 == "ui" ]; then tail; fi
+
 # Fire up origin
 docker-compose up -d origin origin_lb
 docker-compose scale origin=3

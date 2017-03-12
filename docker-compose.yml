@@ -59,8 +59,8 @@ services:
 
   ui:
     image: bign8/cdn/ui:latest
-    depends_on:
-      - server
-      - origin
+    # depends_on:
+    #   - server
+    #   - origin
     ports:
       - 8083:8083

@@ -5,7 +5,7 @@ GOFLAGS=-i -v -ldflags "-s -w -X github.com/bign8/cdn/util/health.Version=${VERS
 
 all: client/main origin/main server/main ui/main
 
-%/main: %/Dockerfile %/*.go ${UTILS}
+%/main: %/Dockerfile %/*.go %/src/* ${UTILS}
 	go test ./$*
 	CGO_ENABLED=0 GOOS=linux go build ${GOFLAGS} -o $@ ./$*
 	docker build --rm -t bign8/cdn/$*:latest ./$*
