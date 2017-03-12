@@ -1,7 +1,7 @@
-var ws = new WebSocket("ws://" + window.location.host + "/ws");
+var ws = new WebSocket("ws://" + window.location.host + "/ws/admin");
 
 ws.onopen = function() {
-  ws.send(JSON.stringify({msg: "hello server!"}))
+  ws.send(JSON.stringify({typ: "ping"}))
 }
 
 ws.onmessage = function(event) {

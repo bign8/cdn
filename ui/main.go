@@ -26,7 +26,7 @@ func main() {
 	// create manager
 	man, err := newManager()
 	check(err)
-	http.Handle("/ws", websocket.Handler(man.Handle))
+	http.Handle("/ws/", websocket.Handler(man.Handle))
 	http.Handle("/", http.FileServer(http.Dir("./src")))
 
 	files, _ := ioutil.ReadDir("./src")
