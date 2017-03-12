@@ -74,12 +74,13 @@ func (man *manager) register(ws *websocket.Conn) (connType, func(), error) {
 }
 
 func (man *manager) Handle(ws *websocket.Conn) {
-	typ, death, err := man.register(ws)
+	_, death, err := man.register(ws)
 	if err != nil {
 		log.Println("bad register: ", err)
 		return
 	}
 	defer death()
+OUTER:
 	for {
 		var wrap wrapper
 		if err := websocket.JSON.Receive(ws, &wrap); err != nil {
@@ -88,8 +89,10 @@ func (man *manager) Handle(ws *websocket.Conn) {
 		}
 		switch wrap.Type {
 		case "ping":
-			// TODO: ping
-			log.Println("PING", string(wrap.Msg), ws.RemoteAddr(), typ)
+			if err := websocket.JSON.Send(ws, wrapper{Type: "pong"}); err != nil {
+				log.Println("Pong err", ws.RemoteAddr(), err)
+				break OUTER
+			}
 		case "stat":
 			// TODO: stat
 			log.Println("STAT", string(wrap.Msg))
