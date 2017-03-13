@@ -142,7 +142,7 @@ func main() {
 	s := &server{
 		g:        genGraph(*size, *links),
 		imgCache: make([][]byte, *nimg),
-		stat:     stats.NewStats("origin."+host, nil),
+		stat:     stats.NewStats(host, "origin"),
 	}
 	http.HandleFunc("/favicon.ico", http.NotFound)
 	http.HandleFunc("/page/", s.page)

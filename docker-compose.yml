@@ -5,6 +5,8 @@ services:
     image: bign8/cdn/origin:latest
     ports:
       - 8080
+    environment:
+      ADMIN: "ui.bign8.info:8083"
 
   # thanks: https://github.com/vegasbrianc/docker-compose-demo
   origin_lb:
@@ -24,6 +26,7 @@ services:
     image: bign8/cdn/server:latest
     environment:
       TARGET: "http://origin.bign8.info"
+      ADMIN: "ui.bign8.info:8083"
     ports:
       - 8081
     links:
@@ -51,6 +54,7 @@ services:
       - origin_lb
     environment:
       TARGET: "http://cdn.bign8.info"
+      ADMIN: "ui.bign8.info:8083"
 
   redis:
     image: redis:alpine
@@ -64,3 +68,7 @@ services:
     #   - origin
     ports:
       - 8083:8083
+    networks:
+      default:
+        aliases:
+          - ui.bign8.info

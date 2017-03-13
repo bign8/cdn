@@ -1,15 +1,20 @@
 package stats
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 	"sort"
 	"sync"
 	"time"
 
-	redis "gopkg.in/redis.v3"
+	"golang.org/x/net/websocket"
 )
+
+type msg struct {
+	Type string          `json:"typ"`
+	Msg  map[string]stat `json:"msg"`
+}
 
 type stat struct {
 	Total uint64
@@ -22,16 +27,22 @@ type Stats struct {
 	nums   map[string]uint64
 	nuMu   sync.Mutex
 	name   string
-	conn   *redis.Client
+	ws     *websocket.Conn
 }
 
 // NewStats constructs a new stats object
-func NewStats(name string, conn *redis.Client) *Stats {
+func NewStats(name, nodeType string) *Stats {
+	// TODO(bign8): backoff and jitter retries - https://www.awsarchitectureblog.com/2015/03/backoff.html
+	ws, err := websocket.Dial("ws://"+os.Getenv("ADMIN")+"/ws/"+nodeType, "", name)
+	if err != nil {
+		log.Println("Websocket cannot connect", err)
+		ws = nil
+	}
 	return &Stats{
 		totals: make(map[string]uint64),
 		nums:   make(map[string]uint64),
-		name:   name,
-		conn:   conn,
+		name:   nodeType + ":" + name,
+		ws:     ws,
 	}
 }
 
@@ -66,12 +77,8 @@ func (s *Stats) String() string {
 	for _, key := range keys {
 		batch = append(batch, fmt.Sprintf("%s(%d)%d", key, clone[key].More, clone[key].Total))
 	}
-	if s.conn != nil {
-		bits, err := json.Marshal(clone)
-		if err != nil {
-			panic(err)
-		}
-		if err = s.conn.Set(s.name, string(bits), time.Second).Err(); err != nil {
+	if s.ws != nil {
+		if err := websocket.JSON.Send(s.ws, msg{Type: "stat", Msg: clone}); err != nil {
 			panic(err)
 		}
 	}
