@@ -1,13 +1,14 @@
 package main
 
 import (
+	"crypto/md5"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
-	"net/http"
 	"sync"
+	"time"
 
-	uuid "github.com/satori/go.uuid"
 	"golang.org/x/net/websocket"
 )
 
@@ -16,18 +17,15 @@ type wrapper struct {
 	Msg  json.RawMessage `json:"msg"` // The full body of the received message
 }
 
-type connType int
-
-const (
-	connTypeBad connType = iota
-	connTypeAdmin
-	connTypeClient
-	connTypeOrigin
-	connTypeServer
-)
+var approvedTypes = map[string]bool{
+	"admin":  true,
+	"client": true,
+	"origin": true,
+	"server": true,
+}
 
 type socketWrapper struct {
-	ty connType
+	ty string
 	ws *websocket.Conn
 }
 
@@ -42,30 +40,21 @@ func newManager() (*manager, error) {
 	}, nil
 }
 
-func (man *manager) register(ws *websocket.Conn) (connType, func(), error) {
-	var typ connType
-	switch ws.Request().URL.Path[4:] {
-	case "admin":
-		typ = connTypeAdmin
-	case "client":
-		typ = connTypeClient
-	case "origin":
-		typ = connTypeOrigin
-	case "server":
-		typ = connTypeServer
-	default:
-		ws.WriteClose(http.StatusExpectationFailed)
-		return connTypeBad, nil, errors.New("bad ws type: '" + ws.Request().URL.Path[4:] + "'")
+func (man *manager) register(ws *websocket.Conn) (string, func(), error) {
+	kind := ws.Request().URL.Path[4:] // len("/ws/")
+	if !approvedTypes[kind] {
+		return kind, nil, errors.New("bad ws type: '" + kind + "'")
 	}
-	id := uuid.NewV4().String()
+	id := kind + "-" + ws.RemoteAddr().String() + "-" + time.Now().String()
+	id = fmt.Sprintf("%X", md5.Sum([]byte(id)))
 	log.Println("Registering:", id)
 	man.mutx.Lock()
 	man.conz[id] = socketWrapper{
-		ty: typ,
+		ty: kind,
 		ws: ws,
 	}
 	man.mutx.Unlock()
-	return typ, func() {
+	return kind, func() {
 		log.Println("Unregistering:", id)
 		man.mutx.Lock()
 		delete(man.conz, id)

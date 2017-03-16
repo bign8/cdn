@@ -31,9 +31,9 @@ type Stats struct {
 }
 
 // NewStats constructs a new stats object
-func NewStats(name, nodeType string) *Stats {
+func NewStats(name, kind string) *Stats {
 	// TODO(bign8): backoff and jitter retries - https://www.awsarchitectureblog.com/2015/03/backoff.html
-	ws, err := websocket.Dial("ws://"+os.Getenv("ADMIN")+"/ws/"+nodeType, "", name)
+	ws, err := websocket.Dial("ws://"+os.Getenv("ADMIN")+"/ws/"+kind, "", "http://"+name)
 	if err != nil {
 		log.Println("Websocket cannot connect", err)
 		ws = nil
@@ -41,7 +41,7 @@ func NewStats(name, nodeType string) *Stats {
 	return &Stats{
 		totals: make(map[string]uint64),
 		nums:   make(map[string]uint64),
-		name:   nodeType + ":" + name,
+		name:   kind + "." + name,
 		ws:     ws,
 	}
 }

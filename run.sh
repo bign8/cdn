@@ -15,12 +15,14 @@ function waitFor () {
 
 # Tail logs
 function tail () {
-  docker-compose up -d ui
   waitFor localhost:8083/ping PONG
   docker-compose logs -f client server origin ui
   exit
 }
 
+# Fire up UI server
+docker-compose up -d ui
+waitFor localhost:8083/ping PONG
 if [ $1 == "ui" ]; then tail; fi
 
 # Fire up origin

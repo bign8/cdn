@@ -1,11 +1,12 @@
-hash: 1b573538a7dc7236f5210bcdd650da83f9293a6e51760af923f534ab6521e5fd
-updated: 2017-03-05T20:52:37.916290836-07:00
+hash: 05a0ffb1c665dce75f9101473d7d886e578e3746b6f3177e23baf093292406ef
+updated: 2017-03-16T08:40:00.357345348-06:00
 imports:
 - name: golang.org/x/net
   version: e99677b929f5a4903df369945bb205a61376b53f
   subpackages:
   - html
   - html/atom
+  - websocket
 - name: gopkg.in/redis.v5
   version: a16aeec10ff407b1e7be6dd35797ccf5426ef0f0
   subpackages:

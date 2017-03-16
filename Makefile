@@ -11,7 +11,10 @@ all: client/main origin/main server/main ui/main
 	docker build --rm -t bign8/cdn/$*:latest ./$*
 
 test:
-	go test $$(glide nv)
+	go test -v $$(glide nv) -cover -bench=.
+
+install:
+	glide install --strip-vendor
 
 clean:
 	@if [ -f client/main ] ; then rm client/main ; fi
@@ -19,4 +22,4 @@ clean:
 	@if [ -f origin/main ] ; then rm origin/main ; fi
 	@if [ -f ui/main ] ; then rm ui/main ; fi
 
-.PHONY: clean all test
+.PHONY: clean all test install
