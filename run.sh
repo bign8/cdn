@@ -15,7 +15,6 @@ function waitFor () {
 
 # Tail logs
 function tail () {
-  waitFor localhost:8083/ping PONG
   docker-compose logs -f client server origin ui
   exit
 }

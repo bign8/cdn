@@ -1,4 +1,4 @@
 package: github.com/bign8/cdn
 import:
-- package: gopkg.in/redis.v5
 - package: golang.org/x/net
+- package: gopkg.in/redis.v5
