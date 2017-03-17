@@ -12,9 +12,7 @@ function start() {
     console.debug("Received message", m.typ);
   }
 
-  ws.onerror = function(event) {
-    console.debug(event);
-  }
+  ws.onerror = function(event) { console.debug(event); };
 
   ws.onclose = function(event) {
     console.debug("closing", event);

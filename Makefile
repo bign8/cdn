@@ -11,7 +11,7 @@ all: client/main origin/main server/main ui/main
 	docker build --rm -t bign8/cdn/$*:latest ./$*
 
 test:
-	go test -v $$(glide nv) -cover -bench=.
+	go test -v $$(glide nv) -cover -bench=. -benchmem
 
 install:
 	glide install --strip-vendor

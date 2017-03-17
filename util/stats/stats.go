@@ -23,6 +23,7 @@ type stat struct {
 
 // Stats is a general statistics object
 type Stats struct {
+	boring bool // if we have already broadcasted no updates, don't spam
 	totals map[string]uint64
 	nums   map[string]uint64
 	nuMu   sync.Mutex
@@ -69,9 +70,20 @@ func (s *Stats) String() string {
 		s.nums[key] = 0
 	}
 	s.nuMu.Unlock()
+
+	//	if we have nothing to say, only update the first time
 	if all == 0 {
+		if !s.boring {
+			if err := websocket.JSON.Send(s.ws, msg{Type: "stat", Msg: clone}); err != nil {
+				panic(err) // TODO: handle errors better
+			}
+			s.boring = true
+		}
 		return ""
 	}
+	s.boring = false
+
+	// Sort and print result (TODO: remove sort when only sending to admin)
 	sort.Strings(keys)
 	batch := make([]string, 0, len(keys))
 	for _, key := range keys {
@@ -79,7 +91,7 @@ func (s *Stats) String() string {
 	}
 	if s.ws != nil {
 		if err := websocket.JSON.Send(s.ws, msg{Type: "stat", Msg: clone}); err != nil {
-			panic(err)
+			panic(err) // TODO: handle errors better
 		}
 	}
 	return fmt.Sprintf("all:%d; VPS(new)total: %s", all, batch) // Value per second

@@ -27,6 +27,7 @@ var approvedTypes = map[string]bool{
 type socketWrapper struct {
 	ty string
 	ws *websocket.Conn
+	// TODO: add a channel to safely send messages to in threads
 }
 
 type manager struct {
@@ -83,8 +84,8 @@ OUTER:
 				break OUTER
 			}
 		case "stat":
-			// TODO: stat
 			log.Println("STAT", string(wrap.Msg))
+			man.sendTo("admin", wrap)
 		default:
 			// TODO: default
 			log.Println("Unknown Type: ", wrap.Type)
@@ -96,4 +97,20 @@ OUTER:
 		// 	break
 		// }
 	}
+}
+
+func (man *manager) sendTo(kind string, wrap wrapper) error {
+	man.mutx.RLock()
+	list := man.conz
+	man.mutx.RUnlock()
+	// TODO: parallel send these requests
+	for _, socket := range list {
+		if socket.ty == kind {
+			// TODO: send these to a threadsafe channel
+			if err := websocket.JSON.Send(socket.ws, wrap); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
