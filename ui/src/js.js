@@ -19,13 +19,13 @@ function start() {
     window.cancelAnimationFrame(framer);
     window.clearTimeout(ticker);
     last *= 2;
-    window.setTimeout(start, last);
+    window.setTimeout(start, Math.floor(Math.random() * last));
   }
 }
 
 function pong() {
   ws.send(JSON.stringify({typ: "ping"}));
-  ticker = window.setTimeout(ping, 10 * 1000);
+  ticker = window.setTimeout(ping, 30 * 1000);
 }
 
 function ping() {

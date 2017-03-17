@@ -17,8 +17,8 @@ type msg struct {
 }
 
 type stat struct {
-	Total uint64
-	More  uint64
+	Total uint64 `json:"tot"`
+	More  uint64 `json:"new"`
 }
 
 // Stats is a general statistics object
