@@ -1,0 +1,21 @@
+machine:
+  environment:
+    IMPORT_PATH: "/home/ubuntu/.go_workspace/src/github.com/bign8"
+    APP_PATH: "$IMPORT_PATH/cdn"
+
+dependencies:
+  override:
+    - sudo add-apt-repository ppa:masterminds/glide -y
+    - sudo apt-get update
+    - sudo apt-get install glide -y
+  post:
+    - go env
+
+test:
+  pre:
+    - mkdir -p "$IMPORT_PATH"
+    - ln -sf "$(pwd)" "$APP_PATH"
+    - cd "$APP_PATH" && glide install -v
+
+  override:
+    - cd "$APP_PATH" && go test -cover -race -v $(glide nv)

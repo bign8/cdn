@@ -1,0 +1,17 @@
+hash: 1b573538a7dc7236f5210bcdd650da83f9293a6e51760af923f534ab6521e5fd
+updated: 2017-03-05T20:52:37.916290836-07:00
+imports:
+- name: golang.org/x/net
+  version: e99677b929f5a4903df369945bb205a61376b53f
+  subpackages:
+  - html
+  - html/atom
+- name: gopkg.in/redis.v5
+  version: a16aeec10ff407b1e7be6dd35797ccf5426ef0f0
+  subpackages:
+  - internal
+  - internal/consistenthash
+  - internal/hashtag
+  - internal/pool
+  - internal/proto
+testImports: []
