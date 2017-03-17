@@ -2,13 +2,13 @@ package main
 
 import "fmt"
 
-// Distributed Hash Table
+// DHT Distributed Hash Table
 type DHT struct {
 	// Id -> Node
 	nodeMap map[int]Node
 }
 
-// A single node (server) on the DHT
+// NODE A single node (server) on the DHT
 type Node struct {
 	id      int
 	start   int
@@ -16,15 +16,17 @@ type Node struct {
 	dataMap map[int]string
 }
 
+// toString method
 func (n *Node) String() string {
 	return fmt.Sprintf("ID: %d, Start: %d, Stop: %d\n", n.id, n.start, n.stop)
 }
 
+// Add piece of data to nodes map
 func (n *Node) insertNewElement(value string, valueHash int) {
 	n.dataMap[valueHash] = value
 }
 
-//join a node to a DHT
+// Join a node to a DHT
 func (dht *DHT) join(id int, start int, stop int) {
 	n := &Node{
 		id:      id,
@@ -35,13 +37,14 @@ func (dht *DHT) join(id int, start int, stop int) {
 	dht.nodeMap[id] = *n
 }
 
+// Insert new piece of data into DHT
 func (dht *DHT) insertNewElement(value string, valueHash int) {
 	for _, n := range dht.nodeMap {
 		if n.start < valueHash && n.stop > valueHash {
 			n.insertNewElement(value, valueHash)
 		}
 	}
-	//what happens if we walk all the away around and don't find it?
+	// TODO what happens if we walk all the away around and don't find hashValue?
 }
 
 func (dht *DHT) buildTable(data []string) {
