@@ -1,3 +1,5 @@
+// Chart documentation: http://www.chartjs.org/docs/
+
 var ws, ticker, framer, last;
 
 function start() {
@@ -73,6 +75,7 @@ var data = {
 };
 
 var options = {
+  responsive: false, // don't resize
   scales: {
     xAxes: [{
       type: "time",
@@ -99,3 +102,29 @@ var myChart = new Chart(chart, {
   data: data,
   options: options
 });
+
+// TODO: make all this smart
+
+function checkSetIdx(idx, now) {
+  var obj = myChart.data.datasets[idx];
+  if (now - obj.data[obj.data.length - 1].x > 1500) {
+    obj.data.push({
+      x: now,
+      y: 0,
+    });
+  }
+  if (obj.data.length > 10) {
+    obj.data.shift();
+  }
+}
+
+function setZeros() {
+  console.log("setting zeros");
+  var now = Date.now();
+  checkSetIdx(0, now);
+  checkSetIdx(1, now);
+  myChart.update();
+  window.setTimeout(window.requestAnimationFrame.bind(this, setZeros), 1000);
+}
+
+setZeros();
