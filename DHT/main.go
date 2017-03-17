@@ -4,9 +4,8 @@ import "fmt"
 
 // Distributed Hash Table
 type DHT struct {
-	nodes []Node
-	// start of nodes space is key, node id is value
-	nodeMap map[int]int
+	// Id -> Node
+	nodeMap map[int]Node
 }
 
 // A single node (server) on the DHT
@@ -33,11 +32,11 @@ func (dht *DHT) join(id int, start int, stop int) {
 		stop:    stop,
 		dataMap: make(map[int]string),
 	}
-	dht.nodes = append(dht.nodes, *n)
+	dht.nodeMap[id] = *n
 }
 
 func (dht *DHT) insertNewElement(value string, valueHash int) {
-	for _, n := range dht.nodes {
+	for _, n := range dht.nodeMap {
 		if n.start < valueHash && n.stop > valueHash {
 			n.insertNewElement(value, valueHash)
 		}
@@ -57,7 +56,6 @@ func (dht *DHT) buildTable(data []string) {
 	for i := 0; i < numNodes; i++ {
 		stop := start + dataSize/numNodes
 		dht.join(i, start, stop)
-		dht.nodeMap[start] = i
 		start = stop
 	}
 
@@ -92,12 +90,11 @@ func main() {
 
 	// Create hashtable
 	dht := &DHT{
-		nodes:   make([]Node, 3),
-		nodeMap: make(map[int]int),
+		nodeMap: make(map[int]Node),
 	}
 	dht.buildTable(l)
 
-	for _, n := range dht.nodes {
+	for _, n := range dht.nodeMap {
 		fmt.Println(n)
 	}
 
