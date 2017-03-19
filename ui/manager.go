@@ -27,10 +27,7 @@ type who struct {
 func (w *wrapper) attach(id, kind string) { w.Who = &who{id, kind} }
 
 var approvedTypes = map[string]bool{
-	"admin":  true,
-	"client": true,
-	"origin": true,
-	"server": true,
+	"admin": true,
 }
 
 type socketWrapper struct {
@@ -43,14 +40,14 @@ type manager struct {
 	conz map[string]socketWrapper
 	mutx sync.RWMutex
 
-	servers map[string]map[string]bool
+	servers map[string]string // hostname -> kind
 	smux    sync.RWMutex
 }
 
 func newManager() (*manager, error) {
 	return &manager{
 		conz:    make(map[string]socketWrapper, 10),
-		servers: make(map[string]map[string]bool),
+		servers: make(map[string]string),
 	}, nil
 }
 
@@ -141,14 +138,26 @@ func (man *manager) Hello(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	man.smux.Lock()
-	set, ok := man.servers[kind]
-	if !ok {
-		set = make(map[string]bool)
-		man.servers[kind] = set
-	}
-	set[name] = true
+	man.servers[name] = kind
 	man.smux.Unlock()
 	w.WriteHeader(http.StatusAccepted)
 	w.Write([]byte("Ready to Poll!"))
 	log.Printf("Registering new %s: %q", kind, name)
+}
+
+func (man *manager) poll() {
+	for range time.Tick(time.Second) {
+		man.smux.RLock()
+		// TODO: only clone if there is a difference
+		clone := make(map[string]string, len(man.servers))
+		for key, value := range man.servers {
+			clone[key] = value
+		}
+		man.smux.RUnlock()
+
+		// TODO: fanout request all servers metrics
+
+		log.Println("TODO: poll all the servers for statuses and broadcast to admin")
+		// TODO: update admins with useful information
+	}
 }
