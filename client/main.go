@@ -43,7 +43,7 @@ func main() {
 
 	host, err := os.Hostname()
 	check(err)
-	registry := stats.New("client", host)
+	registry := stats.New("client", host, 8082)
 	timer = registry.Timer("request")
 	render = registry.Timer("render")
 

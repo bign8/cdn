@@ -133,12 +133,13 @@ func (man *manager) Hello(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	kind := r.Form.Get("kind")
 	name := r.Form.Get("name")
-	if kind == "" || name == "" {
-		http.Error(w, "invalid name or kind", http.StatusExpectationFailed)
+	port := r.Form.Get("port")
+	if kind == "" || name == "" || port == "" {
+		http.Error(w, "invalid name or kind or port", http.StatusExpectationFailed)
 		return
 	}
 	man.smux.Lock()
-	man.servers[name] = kind
+	man.servers[name+":"+port] = kind
 	man.smux.Unlock()
 	w.WriteHeader(http.StatusAccepted)
 	w.Write([]byte("Ready to Poll!"))

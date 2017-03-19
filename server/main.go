@@ -37,7 +37,7 @@ func main() {
 	host, err := os.Hostname()
 	check(err)
 
-	registry := stats.New("server", host)
+	registry := stats.New("server", host, *port)
 
 	red := redis.NewClient(&redis.Options{Addr: "redis:6379"})
 	check(red.Ping().Err())

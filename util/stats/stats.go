@@ -5,13 +5,14 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 
 	metrics "github.com/rcrowley/go-metrics"
 	"github.com/rcrowley/go-metrics/exp"
 )
 
 // New creates a new stats registry
-func New(kind, name string) Stats {
+func New(kind, name string, port int) Stats {
 	registry := metrics.NewPrefixedRegistry(kind + ".")
 	exp.Exp(registry)
 
@@ -19,6 +20,7 @@ func New(kind, name string) Stats {
 	res, err := http.PostForm("http://"+os.Getenv("ADMIN")+"/hello", url.Values{
 		"kind": {kind},
 		"name": {name},
+		"port": {strconv.Itoa(port)},
 	})
 	if err != nil {
 		panic(err)

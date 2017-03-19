@@ -142,7 +142,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	registry := stats.New("origin", host)
+	registry := stats.New("origin", host, *port)
 	s := &server{
 		g:        genGraph(*size, *links),
 		imgCache: make([][]byte, *nimg),
