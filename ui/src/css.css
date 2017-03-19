@@ -1,0 +1,17 @@
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+#wrapper {
+  width: 100%;
+  height: 100%;
+}
+.column {
+  display: block;
+  width: inherit; /* programatically set */
+  height: 100%;
+  float: left;
+  overflow-x: hidden;
+  overflow-y: scroll;
+}

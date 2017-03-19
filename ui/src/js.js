@@ -43,7 +43,6 @@ function createChart(ctx, name) {
       datasets: [],
     },
     options: {
-      responsive: false, // don't resize
       title: {
         display: true,
         text: name,
@@ -89,7 +88,7 @@ function createDataset(name, colorIDX) {
 }
 
 function Brain() {
-  this.kinds = ['origin', 'server', 'client']; // TODO: allow re-ordering
+  this.kinds = {}; // map of kind names to columns (stat.who.kind -> div)
   this.charts = {}; // map of ids to chart types (stat.who.id -> chart)
 }
 
@@ -98,12 +97,25 @@ Brain.prototype.addStat = function(stat) {
   console.log(stat);
   var now = Date.now();
 
+  // Initalize column if necessary
+  if (!this.kinds.hasOwnProperty(stat.who.kind)) {
+    var col = document.createElement('div');
+    col.classList.add('column');
+    col.id = stat.who.kind; // TODO: remove after debugging
+    document.getElementById("wrapper").appendChild(col);
+    this.kinds[stat.who.kind] = col;
+
+    // Resize all columns as necessary for new addition
+    var size = (100 / Object.keys(this.kinds).length).toString() + "%";
+    for (var kind in this.kinds) kind.width = size;
+  }
+
   // Initalize chart object if necessary
   if (!this.charts.hasOwnProperty(stat.who.id)) {
     var ctx = document.createElement('canvas');
     ctx.width = 800;
     ctx.height = 400;
-    document.body.appendChild(ctx); // TODO: figure out the correct place to put this chart
+    this.kinds[stat.who.kind].appendChild(ctx); // TODO: figure out the correct place to put this chart
     this.charts[stat.who.id] = createChart(ctx, stat.who.kind + " " + stat.who.id.substr(0, 10).toLowerCase());
   }
   var active = this.charts[stat.who.id];
@@ -125,6 +137,7 @@ Brain.prototype.addStat = function(stat) {
 };
 
 // For all charts, prune total data points and plot additional 0 points as time progresses
+var ZERO_CAP = 1500, DATA_CAP = 10;
 Brain.prototype.setZeros = function() {
   console.debug("Brain setting zeros");
   var now = Date.now();
@@ -137,12 +150,12 @@ Brain.prototype.setZeros = function() {
       var obj = chart.datasets[i];
 
       // if the newest item is older than 1.5 seconds
-      if (now - obj.data[obj.data.length - 1].x > 1500) {
+      if (now - obj.data[obj.data.length - 1].x > ZERO_CAP) {
         obj.data.push({x: now, y: 0}); // add dummy zero point
       }
 
       // if the length of data being shown is more than 10
-      if (obj.data.length > 10) {
+      if (obj.data.length > DATA_CAP) {
         obj.data.shift(); // prune one off
       }
     }
@@ -150,7 +163,7 @@ Brain.prototype.setZeros = function() {
   }
 
   // Run this method again at a designated time in the future, ontop of an animation frame
-  window.setTimeout(window.requestAnimationFrame.bind(window, this.setZeros.bind(this)), 1000);
+  window.setTimeout(window.requestAnimationFrame.bind(window, this.setZeros.bind(this)), ZERO_CAP);
 };
 
 // Initalize the brain
