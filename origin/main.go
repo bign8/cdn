@@ -15,6 +15,7 @@ import (
 
 	"github.com/bign8/cdn/util/health"
 	"github.com/bign8/cdn/util/stats"
+	metrics "github.com/rcrowley/go-metrics"
 )
 
 var (
@@ -62,15 +63,19 @@ var t = template.Must(template.New("page").Parse(`<!DOCTYPE html>
 type server struct {
 	g        graph
 	imgCache [][]byte
-	stat     *stats.Stats
+
+	// stats objects
+	bad metrics.Counter
+	img metrics.Counter
+	tim metrics.Timer
 }
 
 func (s *server) page(w http.ResponseWriter, r *http.Request) {
-	// now := time.Now()
+	now := time.Now()
 	u, err := strconv.Atoi(r.URL.Path[6:]) // 6 = len("/page/")
 	if err != nil {
 		http.NotFound(w, r)
-		s.stat.Inc("bad")
+		s.bad.Inc(1)
 		return
 	}
 	if u > s.g.Size() || u < 0 {
@@ -98,20 +103,19 @@ func (s *server) page(w http.ResponseWriter, r *http.Request) {
 	if err := t.Execute(w, data); err != nil {
 		log.Fatal(err)
 	}
-	// log.Printf("%s %s", r.URL.Path, time.Since(now))
-	s.stat.Inc("hit")
+	s.tim.UpdateSince(now)
 }
 
 func (s *server) image(w http.ResponseWriter, r *http.Request) {
 	u, err := strconv.Atoi(r.URL.Path[5:]) // 5 = len("/img/")
 	if err != nil {
 		http.NotFound(w, r)
-		s.stat.Inc("bad")
+		s.bad.Inc(1)
 		return
 	}
 	if u > *nimg || u < 0 {
 		http.NotFound(w, r)
-		s.stat.Inc("bad")
+		s.bad.Inc(1)
 		return
 	}
 	bits := s.imgCache[u]
@@ -121,13 +125,12 @@ func (s *server) image(w http.ResponseWriter, r *http.Request) {
 		s.imgCache[u] = bits
 	}
 	w.Write(bits)
-	s.stat.Inc("img")
+	s.img.Inc(1)
 }
 
 func (s *server) redirect(w http.ResponseWriter, r *http.Request) {
 	log.Println("Redirecting", r.URL.String())
 	http.Redirect(w, r, "/page/"+pad(rand.Intn(s.g.Size())), http.StatusTemporaryRedirect)
-	s.stat.Inc("mis")
 }
 
 func main() {
@@ -139,15 +142,19 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	registry := stats.New("origin", host)
 	s := &server{
 		g:        genGraph(*size, *links),
 		imgCache: make([][]byte, *nimg),
-		stat:     stats.NewStats(host, "origin"),
+
+		// stats objects
+		bad: registry.Counter("bad"),
+		img: registry.Counter("img"),
+		tim: registry.Timer("page"),
 	}
 	http.HandleFunc("/favicon.ico", http.NotFound)
 	http.HandleFunc("/page/", s.page)
 	http.HandleFunc("/img/", s.image)
 	http.HandleFunc("/", s.redirect)
-	go s.stat.Report(time.Second)
 	http.ListenAndServe(":"+strconv.Itoa(*port), nil)
 }

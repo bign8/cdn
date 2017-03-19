@@ -1,6 +1,8 @@
-hash: 05a0ffb1c665dce75f9101473d7d886e578e3746b6f3177e23baf093292406ef
-updated: 2017-03-16T08:40:00.357345348-06:00
+hash: d1f193d8620e39e73251da360f2c2e5d5124a0c9619d4dc4622c2173a1a0d6d0
+updated: 2017-03-19T15:27:19.744187299-06:00
 imports:
+- name: github.com/rcrowley/go-metrics
+  version: ab2277b1c5d15c3cba104e9cbddbdfc622df5ad8
 - name: golang.org/x/net
   version: e99677b929f5a4903df369945bb205a61376b53f
   subpackages:

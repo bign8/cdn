@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"strconv"
 
@@ -26,13 +25,9 @@ func main() {
 	// create manager
 	man, err := newManager()
 	check(err)
+	http.HandleFunc("/hello", man.Hello)
 	http.Handle("/ws/", websocket.Handler(man.Handle))
 	http.Handle("/", http.FileServer(http.Dir("./src")))
-
-	files, _ := ioutil.ReadDir("./src")
-	for _, f := range files {
-		fmt.Println("file:", f.Name())
-	}
 
 	// Should listen to docker port mappings to ping each container directly
 	// Also should have some sweet gopherjs transpiled stockets stuff for status updates

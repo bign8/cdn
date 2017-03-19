@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/http"
 	"sync"
 	"time"
 
@@ -41,11 +42,15 @@ type socketWrapper struct {
 type manager struct {
 	conz map[string]socketWrapper
 	mutx sync.RWMutex
+
+	servers map[string]map[string]bool
+	smux    sync.RWMutex
 }
 
 func newManager() (*manager, error) {
 	return &manager{
-		conz: make(map[string]socketWrapper, 10),
+		conz:    make(map[string]socketWrapper, 10),
+		servers: make(map[string]map[string]bool),
 	}, nil
 }
 
@@ -125,4 +130,25 @@ func (man *manager) sendTo(kind string, wrap wrapper) error {
 		}
 	}
 	return nil
+}
+
+func (man *manager) Hello(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	kind := r.Form.Get("kind")
+	name := r.Form.Get("name")
+	if kind == "" || name == "" {
+		http.Error(w, "invalid name or kind", http.StatusExpectationFailed)
+		return
+	}
+	man.smux.Lock()
+	set, ok := man.servers[kind]
+	if !ok {
+		set = make(map[string]bool)
+		man.servers[kind] = set
+	}
+	set[name] = true
+	man.smux.Unlock()
+	w.WriteHeader(http.StatusAccepted)
+	w.Write([]byte("Ready to Poll!"))
+	log.Printf("Registering new %s: %q", kind, name)
 }

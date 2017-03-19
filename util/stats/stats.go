@@ -1,107 +1,91 @@
 package stats
 
 import (
-	"fmt"
 	"log"
+	"net/http"
+	"net/url"
 	"os"
-	"sort"
-	"sync"
-	"time"
 
-	"golang.org/x/net/websocket"
+	metrics "github.com/rcrowley/go-metrics"
+	"github.com/rcrowley/go-metrics/exp"
 )
 
-type msg struct {
-	Type string          `json:"typ"`
-	Msg  map[string]stat `json:"msg"`
-}
+// New creates a new stats registry
+func New(kind, name string) Stats {
+	registry := metrics.NewPrefixedRegistry(kind + ".")
+	exp.Exp(registry)
 
-type stat struct {
-	Total uint64 `json:"tot"`
-	More  uint64 `json:"new"`
-}
-
-// Stats is a general statistics object
-type Stats struct {
-	boring bool // if we have already broadcasted no updates, don't spam
-	totals map[string]uint64
-	nums   map[string]uint64
-	nuMu   sync.Mutex
-	name   string
-	ws     *websocket.Conn
-}
-
-// NewStats constructs a new stats object
-func NewStats(name, kind string) *Stats {
-	// TODO(bign8): backoff and jitter retries - https://www.awsarchitectureblog.com/2015/03/backoff.html
-	ws, err := websocket.Dial("ws://"+os.Getenv("ADMIN")+"/ws/"+kind, "", "http://"+name)
+	// NOTE: this is a HACK! (TODO: some awesome retries and stuff in the background)
+	res, err := http.PostForm("http://"+os.Getenv("ADMIN")+"/hello", url.Values{
+		"kind": {kind},
+		"name": {name},
+	})
 	if err != nil {
-		log.Println("Websocket cannot connect", err)
-		ws = nil
+		panic(err)
 	}
-	return &Stats{
-		totals: make(map[string]uint64),
-		nums:   make(map[string]uint64),
-		name:   kind + "." + name,
-		ws:     ws,
+	if res.StatusCode != http.StatusAccepted {
+		log.Println("Admin not available!", res.Status)
 	}
+	return Stats{registry}.Sub(name)
 }
 
-// Inc adds a particular value
-func (s *Stats) Inc(name string) {
-	s.nuMu.Lock()
-	s.nums[name]++
-	s.nuMu.Unlock()
+// Stats is the same as Stats with more special sauce
+type Stats struct {
+	metrics.Registry
 }
 
-func (s *Stats) String() string {
-	s.nuMu.Lock()
-	var all uint64
-	keys := make([]string, 0, len(s.nums))
-	clone := make(map[string]stat, len(s.nums))
-	for key, value := range s.nums {
-		keys = append(keys, key)
-		all += value
-		s.totals[key] += value
-		clone[key] = stat{
-			More:  value,
-			Total: s.totals[key],
-		}
-		s.nums[key] = 0
+// Sub creaets a sub stats registry
+func (s Stats) Sub(name string) Stats {
+	if s.Registry == nil {
+		return Stats{metrics.NewPrefixedRegistry(name + ".")} // For testing
 	}
-	s.nuMu.Unlock()
-
-	//	if we have nothing to say, only update the first time
-	if all == 0 {
-		if !s.boring {
-			if err := websocket.JSON.Send(s.ws, msg{Type: "stat", Msg: clone}); err != nil {
-				panic(err) // TODO: handle errors better
-			}
-			s.boring = true
-		}
-		return ""
-	}
-	s.boring = false
-
-	// Sort and print result (TODO: remove sort when only sending to admin)
-	sort.Strings(keys)
-	batch := make([]string, 0, len(keys))
-	for _, key := range keys {
-		batch = append(batch, fmt.Sprintf("%s(%d)%d", key, clone[key].More, clone[key].Total))
-	}
-	if s.ws != nil {
-		if err := websocket.JSON.Send(s.ws, msg{Type: "stat", Msg: clone}); err != nil {
-			panic(err) // TODO: handle errors better
-		}
-	}
-	return fmt.Sprintf("all:%d; VPS(new)total: %s", all, batch) // Value per second
+	return Stats{metrics.NewPrefixedChildRegistry(s.Registry, name+".")}
 }
 
-// Report stores data every interval with name
-func (s *Stats) Report(interval time.Duration) {
-	for c := time.Tick(interval); ; <-c {
-		if line := s.String(); line != "" {
-			log.Printf("%s: %s", s.name, line)
-		}
+// Counter creates a counter
+func (s Stats) Counter(name string) metrics.Counter {
+	if s.Registry == nil {
+		return &metrics.NilCounter{} // For testing
 	}
+	return metrics.GetOrRegisterCounter(name, s.Registry)
+}
+
+// Gauge creates a guage
+func (s Stats) Gauge(name string) metrics.Gauge {
+	if s.Registry == nil {
+		return &metrics.NilGauge{} // For testing
+	}
+	return metrics.GetOrRegisterGauge(name, s.Registry)
+}
+
+// GaugeFloat64 creates a guage
+func (s Stats) GaugeFloat64(name string) metrics.GaugeFloat64 {
+	if s.Registry == nil {
+		return &metrics.NilGaugeFloat64{} // For testing
+	}
+	return metrics.GetOrRegisterGaugeFloat64(name, s.Registry)
+}
+
+// Histogram creates a histogram
+func (s Stats) Histogram(name string, sample metrics.Sample) metrics.Histogram {
+	if s.Registry == nil {
+		return &metrics.NilHistogram{} // For testing
+	}
+	return metrics.GetOrRegisterHistogram(name, s.Registry, sample)
+}
+
+// Meter creates a meter
+func (s Stats) Meter(name string) metrics.Meter {
+	if s.Registry == nil {
+		return &metrics.NilMeter{} // For testing
+	}
+	return metrics.GetOrRegisterMeter(name, s.Registry)
+}
+
+// Timer creates a timer
+func (s Stats) Timer(name string) metrics.Timer {
+	if s.Registry == nil {
+		return &metrics.NilTimer{} // For testing
+	}
+	return metrics.GetOrRegisterTimer(name, s.Registry)
 }
