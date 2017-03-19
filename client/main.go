@@ -15,11 +15,16 @@ import (
 	"golang.org/x/net/html"
 
 	"github.com/bign8/cdn/util/health"
+	"github.com/bign8/cdn/util/stats"
+	metrics "github.com/rcrowley/go-metrics"
 )
 
 var (
 	target = flag.String("target", os.Getenv("TARGET"), "target hostname")
 	delay  = flag.Duration("delay", time.Second, "delay between page views")
+
+	timer  metrics.Timer
+	render metrics.Timer
 )
 
 func check(err error) {
@@ -35,6 +40,12 @@ func main() {
 		os.Exit(1)
 	}
 	go http.ListenAndServe(":8082", nil)
+
+	host, err := os.Hostname()
+	check(err)
+	registry := stats.New("client", host)
+	timer = registry.Timer("request")
+	render = registry.Timer("render")
 
 	next := *target
 	for {
@@ -58,6 +69,7 @@ func load(loc string) []string {
 		}(part)
 	}
 	wg.Wait()
+	render.UpdateSince(start)
 	log.Printf("Rendering %q took %s", loc, time.Since(start))
 	return links
 }
@@ -65,6 +77,7 @@ func load(loc string) []string {
 func timeGet(loc string) *http.Response {
 	start := time.Now()
 	res, err := http.Get(loc)
+	timer.UpdateSince(start)
 	log.Printf("Loading %q took %s", loc, time.Since(start))
 	check(err)
 	return res

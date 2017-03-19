@@ -5,6 +5,9 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"sync"
+	"time"
+
+	metrics "github.com/rcrowley/go-metrics"
 
 	redis "gopkg.in/redis.v5"
 )
@@ -25,6 +28,10 @@ type cdn struct {
 
 	ring   []string
 	ringMu sync.RWMutex
+
+	// stats
+	cacheSize metrics.Gauge
+	requests  metrics.Timer
 }
 
 func (c *cdn) RoundTrip(req *http.Request) (*http.Response, error) {
@@ -37,12 +44,14 @@ func (c *cdn) RoundTrip(req *http.Request) (*http.Response, error) {
 		}
 		c.mu.Lock()
 		c.cache[req.URL.Path] = r
+		c.cacheSize.Update(int64(len(c.cache)))
 		c.mu.Unlock()
 	}
 	return res, err
 }
 
 func (c *cdn) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	now := time.Now()
 	c.mu.RLock()
 	item, ok := c.cache[req.URL.Path] // TODO: respect cache timeouts
 	c.mu.RUnlock()
@@ -57,4 +66,5 @@ func (c *cdn) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	} else {
 		c.rp.ServeHTTP(w, req) // Couldn't find it anywhere, sending to origin
 	}
+	c.requests.UpdateSince(now) // TODO: toggle which timer based on the branch of the redirect tree above
 }

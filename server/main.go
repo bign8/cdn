@@ -12,6 +12,7 @@ import (
 	redis "gopkg.in/redis.v5"
 
 	"github.com/bign8/cdn/util/health"
+	"github.com/bign8/cdn/util/stats"
 )
 
 const cdnHeader = "x-bign8-cdn"
@@ -36,6 +37,8 @@ func main() {
 	host, err := os.Hostname()
 	check(err)
 
+	registry := stats.New("server", host)
+
 	red := redis.NewClient(&redis.Options{Addr: "redis:6379"})
 	check(red.Ping().Err())
 	red.SAdd("cdn-servers", host)
@@ -46,6 +49,10 @@ func main() {
 		cap:   *cap,
 		red:   red,
 		cache: make(map[string]response),
+
+		// stats objects
+		cacheSize: registry.Gauge("cacheSize"),
+		requests:  registry.Timer("requests"),
 	}
 	cdnHandler.rp.Transport = cdnHandler
 	http.Handle("/", cdnHandler)
