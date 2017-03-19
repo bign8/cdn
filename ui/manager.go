@@ -64,6 +64,7 @@ func (man *manager) register(ws *websocket.Conn) (id, kind string, cancel func()
 	}
 	man.mutx.Unlock()
 	return id, kind, func() {
+		// TODO: send admin disconnet info
 		log.Println("Unregistering:", id)
 		man.mutx.Lock()
 		delete(man.conz, id)

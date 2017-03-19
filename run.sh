@@ -2,6 +2,8 @@
 
 trap 'docker-compose down' EXIT
 
+set -e  # fail if any command fails
+
 function waitFor () {
   timeout=$(( $(date +"%s") + 60 ))  # retry window of 60 seconds
   while ! curl -s "$1" | grep "$2"; do
@@ -22,19 +24,19 @@ function tail () {
 # Fire up UI server
 docker-compose up -d ui
 waitFor localhost:8083/ping PONG
-if [ $1 == "ui" ]; then tail; fi
+if [[ $1 == "ui" ]]; then tail; fi
 
 # Fire up origin
 docker-compose up -d origin origin_lb
 docker-compose scale origin=3
 waitFor localhost:8080/ping PONG
-if [ $1 == "origin" ]; then tail; fi
+if [[ $1 == "origin" ]]; then tail; fi
 
 # Fire up CDN
 docker-compose up -d server server_lb
 docker-compose scale server=3
 waitFor localhost:8081/ping PONG
-if [ $1 == "server" ]; then tail; fi
+if [[ $1 == "server" ]]; then tail; fi
 
 # Fire up client
 docker-compose up -d client
