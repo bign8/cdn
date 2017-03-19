@@ -155,9 +155,7 @@ Brain.prototype.setZeros = function() {
       }
 
       // if the length of data being shown is more than 10
-      if (obj.data.length > DATA_CAP) {
-        obj.data.shift(); // prune one off
-      }
+      while (obj.data.length > DATA_CAP) obj.data.shift(); // prune one off
     }
     this.charts[cid].update(); // TODO: don't update if data hasn't changed
   }
