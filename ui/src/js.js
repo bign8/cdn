@@ -77,17 +77,18 @@ function createChart(ctx, name) {
   })
 }
 
-function createDataset(name, color) {
+var colors = ['255,99,132', '54,162,235', '255,206,86', '75,192,192', '153,102,255', '255,159,64'];
+function createDataset(name, colorIDX) {
   return {
     label: name,
     fill: false,
-    borderColor: color,
+    borderColor: 'rgba('+colors[colorIDX]+',1)',
+    backgroundColor: 'rgba('+colors[colorIDX]+',0.2)',
     data: [],
   };
 }
 
 function Brain() {
-  this.colors = ['rgba(75,192,192,1)'];
   this.kinds = ['origin', 'server', 'client']; // TODO: allow re-ordering
   this.charts = {}; // map of ids to chart types (stat.who.id -> chart)
 }
@@ -112,8 +113,9 @@ Brain.prototype.addStat = function(stat) {
 
     // We do not have an index for this statistic (create one)
     if (!active.data.metadata.hasOwnProperty(key)) {
-      active.data.metadata[key] = Object.keys(active.data.metadata).length
-      active.data.datasets.push(createDataset(key, "")); // TODO: generate color
+      var idx = Object.keys(active.data.metadata).length;
+      active.data.metadata[key] = idx;
+      active.data.datasets.push(createDataset(key, idx)); // idx here is actually color index
     }
 
     // TODO: change dataset name to have total included in suffix
