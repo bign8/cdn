@@ -11,6 +11,7 @@ import (
 
 	redis "gopkg.in/redis.v5"
 
+	"github.com/bign8/cdn/server/DHT"
 	"github.com/bign8/cdn/util/health"
 )
 
@@ -22,6 +23,7 @@ var (
 	cap    = flag.Int("cap", 20, "How many requests to store in cache")
 )
 
+//TODO: better fun error handlings
 func check(err error) {
 	if err != nil {
 		panic(err)
@@ -35,7 +37,12 @@ func main() {
 
 	host, err := os.Hostname()
 	check(err)
+	if os.Getenv("HOST") != "" {
+		host = os.Getenv("HOST")
+	}
 
+	// Localhost for local redis server (screenshot), redis for docker compose (./run.sh server in /cdn)
+	// red := redis.NewClient(&redis.Options{Addr: "localhost:6379"})
 	red := redis.NewClient(&redis.Options{Addr: "redis:6379"})
 	check(red.Ping().Err())
 	red.SAdd("cdn-servers", host)
@@ -46,6 +53,9 @@ func main() {
 		cap:   *cap,
 		red:   red,
 		cache: make(map[string]response),
+		dht: &DHT.SimplisticDHT{
+			DataMap: make(map[int]string),
+		},
 	}
 	cdnHandler.rp.Transport = cdnHandler
 	http.Handle("/", cdnHandler)
@@ -53,5 +63,6 @@ func main() {
 	// Actually start the server
 	log.Printf("ReverseProxy for %q serving on :%d\n", *target, *port)
 	go cdnHandler.monitorNeighbors()
+
 	check(http.ListenAndServe(":"+strconv.Itoa(*port), nil))
 }

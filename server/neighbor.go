@@ -22,9 +22,13 @@ func (c *cdn) checkNeighbors(path string) (result response, found bool) {
 	c.ringMu.RUnlock()
 	ctx, done := context.WithTimeout(context.Background(), time.Second*5)
 
+	//check specific neighbor according to DHT
+	//if me, pass back, else forward
+
 	// Parallel fetching function
 	fetch := func(n string, fin chan<- neighborResult) {
 		target := "http://" + n + ":" + strconv.Itoa(*port) + path
+		c.dht.Who(target)
 		var r neighborResult
 		if req, err := http.NewRequest(http.MethodGet, target, nil); err != nil {
 			r.err = err
@@ -91,6 +95,7 @@ func (c *cdn) monitorNeighbors() {
 			c.ring = result
 			c.ringMu.Unlock()
 		}
+		c.dht.Update(result[:])
 
 		// Wait for another cycle // TODO: listen to pub-sub for updates or something
 		time.Sleep(time.Second * 5)

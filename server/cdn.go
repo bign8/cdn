@@ -6,6 +6,7 @@ import (
 	"net/http/httputil"
 	"sync"
 
+	"github.com/bign8/cdn/server/DHT"
 	redis "gopkg.in/redis.v5"
 )
 
@@ -25,6 +26,7 @@ type cdn struct {
 
 	ring   []string
 	ringMu sync.RWMutex
+	dht    *DHT.SimplisticDHT
 }
 
 func (c *cdn) RoundTrip(req *http.Request) (*http.Response, error) {
