@@ -24,8 +24,8 @@ function start() {
   ws.onclose = function(event) {
     console.debug("closing", event);
     window.clearTimeout(ticker);
-    last *= 2;
-    window.setTimeout(start, Math.floor(Math.random() * last));
+    last = Math.min(last * last, 10 * 60 * 1000); // max out at 10m intervals
+    window.setTimeout(window.requestAnimationFrame.bind(window, start), Math.floor(Math.random() * last));
   }
 }
 
@@ -168,7 +168,52 @@ function Brain() {
 // };
 
 Brain.prototype.doData = function(data) {
-  this.pre.innerHTML = JSON.stringify(data, 0, 2);
+
+  // Process data into lists of values for instance agnostic aggregation
+  var lists = {};
+  for (var key in data) {
+    var parts = key.split('.');
+    parts.splice(1, 1); // remove host from name
+    parts = parts.join('.');
+    if (!lists.hasOwnProperty(parts)) lists[parts] = [];
+    lists[parts].push(data[key]);
+  }
+
+  // Combine data in a pre-defined manner based on type of data
+  sum = function(a, b) { return a + b };
+
+  for (var key in lists) {
+    var parts = key.split('.'), last = parts[parts.length - 1];
+    if (last.indexOf('-') > 0) last = last.split('-')[1];
+    switch (last) {
+
+      // summations
+      case 'bad':
+      case 'img':
+      case 'count':
+      case 'cacheSize':
+        lists[key] = lists[key].reduce(sum);
+        break;
+
+      // averages
+      case 'minute':
+      case 'percentile':
+      case 'rate':
+      case 'max':
+      case 'min':
+      case 'dev':
+      case 'mean':
+        lists[key] = lists[key].reduce(sum) / lists[key].length;
+        break;
+
+      // unknown
+      default:
+        console.log('unknown suffix', last);
+        break
+    }
+  }
+
+  this.pre.innerHTML = JSON.stringify(lists, 0, 2);
 };
 
 // Initalize the brain
