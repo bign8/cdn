@@ -26,6 +26,7 @@ func main() {
 	man, err := newManager()
 	check(err)
 	http.HandleFunc("/hello", man.Hello)
+	http.HandleFunc("/data", man.Data)
 	http.Handle("/ws/", websocket.Handler(man.Handle))
 	http.Handle("/", http.FileServer(http.Dir("./src")))
 

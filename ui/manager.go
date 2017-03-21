@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -42,6 +44,9 @@ type manager struct {
 
 	servers map[string]string // hostname -> kind
 	smux    sync.RWMutex
+
+	data map[string]interface{}
+	dmux sync.RWMutex
 }
 
 func newManager() (*manager, error) {
@@ -146,6 +151,12 @@ func (man *manager) Hello(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Registering new %s: %q", kind, name)
 }
 
+type metricsResult struct {
+	host, kind string
+	metrics    map[string]interface{}
+	err        error
+}
+
 func (man *manager) poll() {
 	for range time.Tick(time.Second) {
 		man.smux.RLock()
@@ -156,9 +167,69 @@ func (man *manager) poll() {
 		}
 		man.smux.RUnlock()
 
-		// TODO: fanout request all servers metrics
+		// requesting from all remote servers
+		fetch := func(host, kind string, done chan<- metricsResult) {
+			target := "http://" + host + "/debug/metrics"
+			r := metricsResult{host: host, kind: kind}
+			if res, err := http.Get(target); err != nil {
+				r.err = err
+			} else if res.StatusCode != http.StatusOK {
+				defer res.Body.Close()
+				bits, _ := ioutil.ReadAll(res.Body)
+				r.err = fmt.Errorf("fetch: bad response (%s): %q", res.Status, string(bits))
+			} else {
+				defer res.Body.Close()
+				r.err = json.NewDecoder(res.Body).Decode(&r.metrics)
+				for key := range r.metrics {
+					if !strings.HasPrefix(key, kind) {
+						delete(r.metrics, key)
+					}
+				}
+			}
+			done <- r
+		}
 
-		log.Println("TODO: poll all the servers for statuses and broadcast to admin")
+		// fanout requests to all servers
+		results := make(chan metricsResult, len(clone))
+		for host, kind := range clone {
+			go fetch(host, kind, results)
+		}
+
+		// get results
+		data := make(map[string]interface{})
+		for i := 0; i < len(clone); i++ {
+			back := <-results
+			if back.err != nil {
+				log.Println("Problem fetching stats from " + back.host + " " + back.kind)
+			} else {
+				for key, value := range back.metrics {
+					data[key] = value
+				}
+			}
+		}
+
 		// TODO: update admins with useful information
+		man.dmux.Lock()
+		man.data = data
+		man.dmux.Unlock()
+		payload, err := json.MarshalIndent(data, "", " ")
+		if err == nil {
+			man.sendTo("admin", wrapper{
+				Type: "data",
+				Msg:  json.RawMessage(payload),
+			})
+		} else {
+			log.Println("Problem marshaling for admin send:", err)
+		}
+	}
+}
+
+func (man *manager) Data(w http.ResponseWriter, r *http.Request) {
+	man.dmux.RLock()
+	defer man.dmux.RUnlock()
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", " ")
+	if err := enc.Encode(man.data); err != nil {
+		http.Error(w, "Cannot encode JSON", http.StatusInternalServerError)
 	}
 }
