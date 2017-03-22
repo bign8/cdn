@@ -43,7 +43,7 @@ func main() {
 
 	// Localhost for local redis server (screenshot), redis for docker compose (./run.sh server in /cdn)
 	// red := redis.NewClient(&redis.Options{Addr: "localhost:6379"})
-	red := redis.NewClient(&redis.Options{Addr: "localhost:6379"})
+	red := redis.NewClient(&redis.Options{Addr: "redis:6379"})
 	check(red.Ping().Err())
 	red.SAdd("cdn-servers", host)
 

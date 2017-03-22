@@ -24,11 +24,12 @@ func (c *cdn) checkNeighbors(path string) (result response, found bool) {
 
 	//check specific neighbor according to DHT
 	//if me, pass back, else forward
+	// serverName, _ := c.dht.Who(path)
+	// result, found = c.nonParalleFetch(path, serverName)
 
 	// Parallel fetching function
 	fetch := func(n string, fin chan<- neighborResult) {
 		target := "http://" + n + ":" + strconv.Itoa(*port) + path
-		c.dht.Who(target)
 		var r neighborResult
 		if req, err := http.NewRequest(http.MethodGet, target, nil); err != nil {
 			r.err = err
@@ -65,7 +66,31 @@ func (c *cdn) checkNeighbors(path string) (result response, found bool) {
 		}
 	}
 	done()
+
+	log.Print("in check neighbors returning:", result, found)
 	return result, found
+}
+
+func (c *cdn) nonParalleFetch(path string, owner string) (result response, found bool) {
+
+	ctx, done := context.WithTimeout(context.Background(), time.Second*5)
+	target := "http://" + owner + ":" + strconv.Itoa(*port) + path
+	var r neighborResult
+	if req, err := http.NewRequest(http.MethodGet, target, nil); err != nil {
+		r.err = err
+	} else {
+		req = req.WithContext(ctx)
+		req.Header.Set(cdnHeader, c.me)
+		if res, err := http.DefaultClient.Do(req); err != nil {
+			r.err = err
+		} else if res.StatusCode == http.StatusOK {
+			r.res, r.err = newResponse(res)
+		} else {
+			r.err = errors.New("fetch: bad response: " + res.Status)
+		}
+	}
+	done()
+	return r.res, true
 }
 
 func (c *cdn) monitorNeighbors() {
