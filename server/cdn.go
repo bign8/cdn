@@ -60,6 +60,7 @@ func (c *cdn) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	c.mu.RUnlock()
 
 	if ok { // We have the data!!!
+		log.Printf("%s: We have the data for %q", c.me, req.URL.Path)
 		item.Send(w)
 	} else if req.Header.Get(cdnHeader) != "" {
 		log.Print(c.me + ": Couldn't find response for neighbor: " + req.URL.Path)
