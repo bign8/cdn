@@ -4,7 +4,6 @@ import (
 	_ "expvar"
 	"flag"
 	"fmt"
-	"log"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -49,7 +48,7 @@ func main() {
 
 	next := *target
 	for {
-		fmt.Println("Browsing to", next) // TODO: wrap this into nice stats wrapper
+		// fmt.Println("Browsing to", next) // TODO: wrap this into nice stats wrapper
 		links := load(next)
 		next = links[rand.Intn(len(links))]
 		time.Sleep(time.Duration(rand.Int63n(int64(*delay))))
@@ -70,7 +69,7 @@ func load(loc string) []string {
 	}
 	wg.Wait()
 	render.UpdateSince(start)
-	log.Printf("Rendering %q took %s", loc, time.Since(start))
+	// log.Printf("Rendering %q took %s", loc, time.Since(start))
 	return links
 }
 
@@ -78,7 +77,7 @@ func timeGet(loc string) *http.Response {
 	start := time.Now()
 	res, err := http.Get(loc)
 	timer.UpdateSince(start)
-	log.Printf("Loading %q took %s", loc, time.Since(start))
+	// log.Printf("Loading %q took %s", loc, time.Since(start))
 	check(err)
 	return res
 }

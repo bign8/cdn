@@ -12,8 +12,7 @@ Topics are based on [Algorithmic Nuggets in Content Delivery](https://people.cs.
   * [Go](https://golang.org/dl/)
   * [Docker](https://www.docker.com/products/overview)
   * [Docker Compose](https://docs.docker.com/compose/install/)
-2. Run `make` to generate containers
-3. Run `./run.sh` to start the environment
+2. Run `./run.sh` to build the source, generate containers, and start the environment
 
 ## Pieces
 

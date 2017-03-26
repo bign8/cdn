@@ -120,7 +120,7 @@ func (s *server) image(w http.ResponseWriter, r *http.Request) {
 	}
 	bits := s.imgCache[u]
 	if bits == nil {
-		log.Println("Generating image", u)
+		// log.Println("Generating image", u)
 		bits = genImage(u)
 		s.imgCache[u] = bits
 	}
@@ -129,7 +129,7 @@ func (s *server) image(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) redirect(w http.ResponseWriter, r *http.Request) {
-	log.Println("Redirecting", r.URL.String())
+	// log.Println("Redirecting", r.URL.String())
 	http.Redirect(w, r, "/page/"+pad(rand.Intn(s.g.Size())), http.StatusTemporaryRedirect)
 }
 

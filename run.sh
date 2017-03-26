@@ -21,6 +21,9 @@ function tail () {
   exit
 }
 
+# Make sure everything is built and ready
+make -j
+
 # Fire up UI server
 docker-compose up -d ui
 waitFor localhost:8083/ping PONG

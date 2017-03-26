@@ -24,6 +24,7 @@ func (c *cdn) checkNeighbors(path string) (result response, found bool) {
 
 	// Parallel fetching function
 	fetch := func(n string, fin chan<- neighborResult) {
+		c.s2scalls.Inc(1)
 		target := "http://" + n + ":" + strconv.Itoa(*port) + path
 		var r neighborResult
 		if req, err := http.NewRequest(http.MethodGet, target, nil); err != nil {
@@ -52,12 +53,14 @@ func (c *cdn) checkNeighbors(path string) (result response, found bool) {
 	for i := 0; i < len(neighbors); i++ {
 		back := <-results
 		if !found && back.err == nil {
-			log.Print(c.me + " Found response on neighbor")
+			c.nHit.Inc(1)
+			// log.Print(c.me + " Found response on neighbor")
 			done()
 			found = true
 			result = back.res
 		} else if !found && back.err != nil {
-			log.Print(c.me + " Problem fetching from neighbor " + back.err.Error())
+			c.nMiss.Inc(1)
+			// log.Print(c.me + " Problem fetching from neighbor " + back.err.Error())
 		}
 	}
 	done()

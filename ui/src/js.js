@@ -192,6 +192,9 @@ Brain.prototype.doData = function(data) {
       case 'img':
       case 'count':
       case 'cacheSize':
+      case 'neighbor_hit':
+      case 'neighbor_miss':
+      case 's2s_calls':
         lists[key] = lists[key].reduce(sum);
         break;
 

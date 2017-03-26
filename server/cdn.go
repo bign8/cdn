@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"net/http"
 	"net/http/httputil"
 	"sync"
@@ -32,6 +31,9 @@ type cdn struct {
 	// stats
 	cacheSize metrics.Gauge
 	requests  metrics.Timer
+	s2scalls  metrics.Counter
+	nHit      metrics.Counter
+	nMiss     metrics.Counter
 }
 
 func (c *cdn) RoundTrip(req *http.Request) (*http.Response, error) {
@@ -59,7 +61,7 @@ func (c *cdn) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if ok { // We have the data!!!
 		item.Send(w)
 	} else if req.Header.Get(cdnHeader) != "" {
-		log.Print(c.me + " couldn't find response for neighbor")
+		// log.Print(c.me + " couldn't find response for neighbor")
 		http.NotFound(w, req) // Request was from other CDN server, don't ask others or origin
 	} else if item, ok = c.checkNeighbors(req.URL.Path); ok {
 		item.Send(w) // Found request on neighbor, sending response

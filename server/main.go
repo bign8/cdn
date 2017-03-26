@@ -53,6 +53,9 @@ func main() {
 		// stats objects
 		cacheSize: registry.Gauge("cacheSize"),
 		requests:  registry.Timer("requests"),
+		s2scalls:  registry.Counter("s2s_calls"),
+		nHit:      registry.Counter("neighbor_hit"),
+		nMiss:     registry.Counter("neighbor_miss"),
 	}
 	cdnHandler.rp.Transport = cdnHandler
 	http.Handle("/", cdnHandler)
