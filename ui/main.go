@@ -5,13 +5,17 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"golang.org/x/net/websocket"
 
 	"github.com/bign8/cdn/util/health"
 )
 
-var port = flag.Int("port", 8083, "what port to run server on")
+var (
+	port  = flag.Int("port", 8083, "what port to run server on")
+	start = time.Now()
+)
 
 func check(err error) {
 	if err != nil {

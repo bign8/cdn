@@ -197,6 +197,7 @@ func (man *manager) poll() {
 
 		// get results
 		data := make(map[string]interface{})
+		data["uptime"] = time.Since(start).String()
 		for i := 0; i < len(clone); i++ {
 			back := <-results
 			if back.err != nil {
