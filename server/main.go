@@ -61,7 +61,7 @@ func main() {
 	http.Handle("/", cdnHandler)
 
 	// Actually start the server
-	log.Printf("ReverseProxy for %q serving on :%d\n", *target, *port)
+	log.Printf(host+": ReverseProxy for %q serving on :%d\n", *target, *port)
 	go cdnHandler.monitorNeighbors()
 	check(http.ListenAndServe(":"+strconv.Itoa(*port), nil))
 }

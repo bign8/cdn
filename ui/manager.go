@@ -148,7 +148,7 @@ func (man *manager) Hello(w http.ResponseWriter, r *http.Request) {
 	man.smux.Unlock()
 	w.WriteHeader(http.StatusAccepted)
 	w.Write([]byte("Ready to Poll!"))
-	log.Printf("Registering new %s: %q", kind, name)
+	log.Printf(host+": Registering new %s: %q", kind, name)
 }
 
 type metricsResult struct {
@@ -201,7 +201,7 @@ func (man *manager) poll() {
 		for i := 0; i < len(clone); i++ {
 			back := <-results
 			if back.err != nil {
-				log.Println("Problem fetching stats from " + back.host + " " + back.kind)
+				log.Println(host + ": Problem fetching stats from " + back.host + " " + back.kind)
 			} else {
 				for key, value := range back.metrics {
 					data[key] = value
@@ -220,7 +220,7 @@ func (man *manager) poll() {
 				Msg:  json.RawMessage(payload),
 			})
 		} else {
-			log.Println("Problem marshaling for admin send:", err)
+			log.Println(host+": Problem marshaling for admin send:", err)
 		}
 	}
 }

@@ -28,6 +28,7 @@ var (
 	port    = flag.Int("port", 8080, "What port to run server on")
 	inter   = flag.Duration("log", time.Second, "What interval to operate logs on")
 	mask    = "%09d"
+	host    = "unknown"
 )
 
 func pad(num int) string { return fmt.Sprintf(mask, num) }
@@ -104,6 +105,7 @@ func (s *server) page(w http.ResponseWriter, r *http.Request) {
 		log.Fatal(err)
 	}
 	s.tim.UpdateSince(now)
+	log.Printf("%s: Got request for %q", host, r.URL.Path)
 }
 
 func (s *server) image(w http.ResponseWriter, r *http.Request) {
@@ -126,10 +128,11 @@ func (s *server) image(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Write(bits)
 	s.img.Inc(1)
+	log.Printf("%s: Got request for %q", host, r.URL.Path)
 }
 
 func (s *server) redirect(w http.ResponseWriter, r *http.Request) {
-	// log.Println("Redirecting", r.URL.String())
+	log.Println(host+": Redirecting", r.URL.String())
 	http.Redirect(w, r, "/page/"+pad(rand.Intn(s.g.Size())), http.StatusTemporaryRedirect)
 }
 
@@ -138,7 +141,8 @@ func main() {
 	health.Check()
 	mask = fmt.Sprintf("%%0%dd", int(math.Ceil(math.Log10(float64(*size)))))
 	runtime.GOMAXPROCS(runtime.NumCPU())
-	host, err := os.Hostname()
+	var err error
+	host, err = os.Hostname()
 	if err != nil {
 		panic(err)
 	}

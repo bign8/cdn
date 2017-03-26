@@ -17,6 +17,7 @@ function waitFor () {
 
 # Tail logs
 function tail () {
+  # TODO: add --no-color if not in shell
   docker-compose logs -f client server origin ui
   exit
 }
@@ -43,6 +44,6 @@ if [[ $1 == "server" ]]; then tail; fi
 
 # Fire up client
 docker-compose up -d client
-docker-compose scale client=3
+# docker-compose scale client=3
 
 tail

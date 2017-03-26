@@ -2,8 +2,8 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -15,6 +15,7 @@ import (
 var (
 	port  = flag.Int("port", 8083, "what port to run server on")
 	start = time.Now()
+	host  = "unknown"
 )
 
 func check(err error) {
@@ -29,6 +30,8 @@ func main() {
 	// create manager
 	man, err := newManager()
 	check(err)
+	host, err = os.Hostname()
+	check(err)
 	http.HandleFunc("/hello", man.Hello)
 	http.HandleFunc("/data", man.Data)
 	http.Handle("/ws/", websocket.Handler(man.Handle))
@@ -38,6 +41,5 @@ func main() {
 
 	// Should listen to docker port mappings to ping each container directly
 	// Also should have some sweet gopherjs transpiled stockets stuff for status updates
-	fmt.Println("TODO: build a sweet UI that pulls vars and container healthchecks")
 	http.ListenAndServe(":"+strconv.Itoa(*port), nil)
 }

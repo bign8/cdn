@@ -54,13 +54,13 @@ func (c *cdn) checkNeighbors(path string) (result response, found bool) {
 		back := <-results
 		if !found && back.err == nil {
 			c.nHit.Inc(1)
-			// log.Print(c.me + " Found response on neighbor")
+			log.Printf("%s: Found response on neighbor for %q", c.me, path)
 			done()
 			found = true
 			result = back.res
 		} else if !found && back.err != nil {
 			c.nMiss.Inc(1)
-			// log.Print(c.me + " Problem fetching from neighbor " + back.err.Error())
+			log.Printf("%s: Problem fetching %q from neighbor %s", c.me, path, back.err)
 		}
 	}
 	done()
@@ -88,7 +88,7 @@ func (c *cdn) monitorNeighbors() {
 
 		// Use string representation of neighbors to determine if update is necessary
 		if next := strings.Join(result, ", "); next != last {
-			log.Print(c.me + " is updating server list: [" + next + "]")
+			log.Print(c.me + ": Updating server list: [" + next + "]")
 			last = next
 			c.ringMu.Lock()
 			c.ring = result
