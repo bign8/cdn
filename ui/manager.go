@@ -159,6 +159,7 @@ type metricsResult struct {
 
 func (man *manager) poll() {
 	for range time.Tick(time.Second) {
+		last = time.Now()
 		man.smux.RLock()
 		// TODO: only clone if there is a difference
 		clone := make(map[string]string, len(man.servers))
@@ -233,4 +234,9 @@ func (man *manager) Data(w http.ResponseWriter, r *http.Request) {
 	if err := enc.Encode(man.data); err != nil {
 		http.Error(w, "Cannot encode JSON", http.StatusInternalServerError)
 	}
+}
+
+func (man *manager) Reset(w http.ResponseWriter, r *http.Request) {
+	// TODO: reset all consumer metrics
+	start = last
 }

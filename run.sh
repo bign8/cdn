@@ -17,8 +17,16 @@ function waitFor () {
 
 # Tail logs
 function tail () {
-  # TODO: add --no-color if not in shell
-  docker-compose logs -f client server origin ui
+  if [[ $TESTNUM ]]; then
+    curl -s localhost:8083/reset
+    echo "Testing $TESTNUM clients!!!"
+    sleep 120
+    echo "Test $TESTNUM complete!!!"
+    curl -s localhost:8083/data > data/test-$TESTNUM.json
+  else
+    # TODO: add --no-color if not in shell
+    docker-compose logs -f client server origin ui
+  fi
   exit
 }
 
@@ -44,6 +52,8 @@ if [[ $1 == "server" ]]; then tail; fi
 
 # Fire up client
 docker-compose up -d client
-# docker-compose scale client=3
+if [[ $TESTNUM ]]; then
+  docker-compose scale client=$TESTNUM
+fi
 
 tail

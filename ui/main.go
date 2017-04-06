@@ -15,6 +15,7 @@ import (
 var (
 	port  = flag.Int("port", 8083, "what port to run server on")
 	start = time.Now()
+	last  = time.Now()
 	host  = "unknown"
 )
 
@@ -32,6 +33,7 @@ func main() {
 	check(err)
 	host, err = os.Hostname()
 	check(err)
+	http.HandleFunc("/reset", man.Reset)
 	http.HandleFunc("/hello", man.Hello)
 	http.HandleFunc("/data", man.Data)
 	http.Handle("/ws/", websocket.Handler(man.Handle))
