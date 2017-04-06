@@ -20,7 +20,7 @@ function tail () {
   if [[ $TESTNUM ]]; then
     curl -s localhost:8083/reset
     echo "Testing $TESTNUM clients!!!"
-    sleep 120
+    sleep 60
     echo "Test $TESTNUM complete!!!"
     curl -s localhost:8083/data > data/test-$TESTNUM.json
   else
