@@ -99,3 +99,16 @@ func (c *cdn) monitorNeighbors() {
 		time.Sleep(time.Second * 5)
 	}
 }
+
+const plen = len("cdn.server.bloom.")
+
+func (c *cdn) monitorNeighborsFilters() {
+	for {
+		msg, err := c.ps.ReceiveMessage()
+		if err != nil {
+			log.Println("monitorNeighborsFilters: error", err)
+			continue
+		}
+		log.Println("monitorNeighborsFilters message:", msg.Channel[plen:], msg.Payload)
+	}
+}

@@ -22,6 +22,7 @@ type cdn struct {
 	rp  *httputil.ReverseProxy
 	red *redis.Client
 	cap int
+	ps  *redis.PubSub
 
 	cache map[string]response
 	mu    sync.RWMutex

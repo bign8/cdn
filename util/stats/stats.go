@@ -23,9 +23,8 @@ func New(kind, name string, port int) Stats {
 		"port": {strconv.Itoa(port)},
 	})
 	if err != nil {
-		panic(err)
-	}
-	if res.StatusCode != http.StatusAccepted {
+		log.Println("Admin not available!", err)
+	} else if res.StatusCode != http.StatusAccepted {
 		log.Println("Admin not available!", res.Status)
 	}
 	return Stats{registry}.Sub(name)

@@ -27,6 +27,7 @@ services:
     environment:
       TARGET: "http://origin.bign8.info"
       ADMIN: "ui.bign8.info:8083"
+      REDIS: "redis:6379"
     ports:
       - 8081
     links:

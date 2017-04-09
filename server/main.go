@@ -39,11 +39,18 @@ func main() {
 
 	registry := stats.New("server", host, *port)
 
-	red := redis.NewClient(&redis.Options{Addr: "redis:6379"})
+	opts, err := redis.ParseURL("redis://" + os.Getenv("REDIS"))
+	check(err)
+	red := redis.NewClient(opts) //&redis.Options{Addr: "localhost:6379"})
 	check(red.Ping().Err())
 	red.SAdd("cdn-servers", host)
 
+	pubsub, err := red.PSubscribe("cdn.server.bloom.*")
+	check(err)
+	defer pubsub.Close()
+
 	cdnHandler := &cdn{
+		ps:    pubsub,
 		me:    host,
 		rp:    httputil.NewSingleHostReverseProxy(uri),
 		cap:   *cap,
@@ -63,5 +70,6 @@ func main() {
 	// Actually start the server
 	log.Printf(host+": ReverseProxy for %q serving on :%d\n", *target, *port)
 	go cdnHandler.monitorNeighbors()
+	go cdnHandler.monitorNeighborsFilters()
 	check(http.ListenAndServe(":"+strconv.Itoa(*port), nil))
 }
