@@ -15,11 +15,17 @@ import (
 	"golang.org/x/net/html"
 
 	"github.com/bign8/cdn/util/health"
+	"github.com/bign8/cdn/util/stats"
+	metrics "github.com/rcrowley/go-metrics"
 )
 
 var (
 	target = flag.String("target", os.Getenv("TARGET"), "target hostname")
 	delay  = flag.Duration("delay", time.Second, "delay between page views")
+	host   = "unknown"
+
+	timer  metrics.Timer
+	render metrics.Timer
 )
 
 func check(err error) {
@@ -36,9 +42,16 @@ func main() {
 	}
 	go http.ListenAndServe(":8082", nil)
 
+	var err error
+	host, err = os.Hostname()
+	check(err)
+	registry := stats.New("client", host, 8082)
+	timer = registry.Timer("request")
+	render = registry.Timer("render")
+
 	next := *target
 	for {
-		fmt.Println("Browsing to", next) // TODO: wrap this into nice stats wrapper
+		log.Print(host+": Browsing to", next) // TODO: wrap this into nice stats wrapper
 		links := load(next)
 		next = links[rand.Intn(len(links))]
 		time.Sleep(time.Duration(rand.Int63n(int64(*delay))))
@@ -58,14 +71,16 @@ func load(loc string) []string {
 		}(part)
 	}
 	wg.Wait()
-	log.Printf("Rendering %q took %s", loc, time.Since(start))
+	render.UpdateSince(start)
+	log.Printf(host+": Rendering %q took %s", loc, time.Since(start))
 	return links
 }
 
 func timeGet(loc string) *http.Response {
 	start := time.Now()
 	res, err := http.Get(loc)
-	log.Printf("Loading %q took %s", loc, time.Since(start))
+	timer.UpdateSince(start)
+	log.Printf(host+": Loading %q took %s", loc, time.Since(start))
 	check(err)
 	return res
 }

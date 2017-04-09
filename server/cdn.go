@@ -5,6 +5,9 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"sync"
+	"time"
+
+	metrics "github.com/rcrowley/go-metrics"
 
 	redis "gopkg.in/redis.v5"
 )
@@ -25,6 +28,13 @@ type cdn struct {
 
 	ring   []string
 	ringMu sync.RWMutex
+
+	// stats
+	cacheSize metrics.Gauge
+	requests  metrics.Timer
+	s2scalls  metrics.Counter
+	nHit      metrics.Counter
+	nMiss     metrics.Counter
 }
 
 func (c *cdn) RoundTrip(req *http.Request) (*http.Response, error) {
@@ -37,24 +47,28 @@ func (c *cdn) RoundTrip(req *http.Request) (*http.Response, error) {
 		}
 		c.mu.Lock()
 		c.cache[req.URL.Path] = r
+		c.cacheSize.Update(int64(len(c.cache)))
 		c.mu.Unlock()
 	}
 	return res, err
 }
 
 func (c *cdn) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	now := time.Now()
 	c.mu.RLock()
 	item, ok := c.cache[req.URL.Path] // TODO: respect cache timeouts
 	c.mu.RUnlock()
 
 	if ok { // We have the data!!!
+		log.Printf("%s: We have the data for %q", c.me, req.URL.Path)
 		item.Send(w)
 	} else if req.Header.Get(cdnHeader) != "" {
-		log.Print(c.me + " couldn't find response for neighbor")
+		log.Print(c.me + ": Couldn't find response for neighbor: " + req.URL.Path)
 		http.NotFound(w, req) // Request was from other CDN server, don't ask others or origin
 	} else if item, ok = c.checkNeighbors(req.URL.Path); ok {
 		item.Send(w) // Found request on neighbor, sending response
 	} else {
 		c.rp.ServeHTTP(w, req) // Couldn't find it anywhere, sending to origin
 	}
+	c.requests.UpdateSince(now) // TODO: toggle which timer based on the branch of the redirect tree above
 }

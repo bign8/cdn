@@ -7,12 +7,15 @@ import (
 	"math"
 	"math/rand"
 	"net/http"
+	"os"
 	"runtime"
 	"strconv"
 	"text/template"
 	"time"
 
 	"github.com/bign8/cdn/util/health"
+	"github.com/bign8/cdn/util/stats"
+	metrics "github.com/rcrowley/go-metrics"
 )
 
 var (
@@ -25,6 +28,7 @@ var (
 	port    = flag.Int("port", 8080, "What port to run server on")
 	inter   = flag.Duration("log", time.Second, "What interval to operate logs on")
 	mask    = "%09d"
+	host    = "unknown"
 )
 
 func pad(num int) string { return fmt.Sprintf(mask, num) }
@@ -60,15 +64,19 @@ var t = template.Must(template.New("page").Parse(`<!DOCTYPE html>
 type server struct {
 	g        graph
 	imgCache [][]byte
-	stat     stats
+
+	// stats objects
+	bad metrics.Counter
+	img metrics.Counter
+	tim metrics.Timer
 }
 
 func (s *server) page(w http.ResponseWriter, r *http.Request) {
-	// now := time.Now()
+	now := time.Now()
 	u, err := strconv.Atoi(r.URL.Path[6:]) // 6 = len("/page/")
 	if err != nil {
 		http.NotFound(w, r)
-		s.stat.inc("bad")
+		s.bad.Inc(1)
 		return
 	}
 	if u > s.g.Size() || u < 0 {
@@ -96,36 +104,36 @@ func (s *server) page(w http.ResponseWriter, r *http.Request) {
 	if err := t.Execute(w, data); err != nil {
 		log.Fatal(err)
 	}
-	// log.Printf("%s %s", r.URL.Path, time.Since(now))
-	s.stat.inc("hit")
+	s.tim.UpdateSince(now)
+	log.Printf("%s: Got request for %q", host, r.URL.Path)
 }
 
 func (s *server) image(w http.ResponseWriter, r *http.Request) {
 	u, err := strconv.Atoi(r.URL.Path[5:]) // 5 = len("/img/")
 	if err != nil {
 		http.NotFound(w, r)
-		s.stat.inc("bad")
+		s.bad.Inc(1)
 		return
 	}
 	if u > *nimg || u < 0 {
 		http.NotFound(w, r)
-		s.stat.inc("bad")
+		s.bad.Inc(1)
 		return
 	}
 	bits := s.imgCache[u]
 	if bits == nil {
-		log.Println("Generating image", u)
+		// log.Println("Generating image", u)
 		bits = genImage(u)
 		s.imgCache[u] = bits
 	}
 	w.Write(bits)
-	s.stat.inc("img")
+	s.img.Inc(1)
+	log.Printf("%s: Got request for %q", host, r.URL.Path)
 }
 
 func (s *server) redirect(w http.ResponseWriter, r *http.Request) {
-	log.Println("Redirecting", r.URL.String())
+	log.Println(host+": Redirecting", r.URL.String())
 	http.Redirect(w, r, "/page/"+pad(rand.Intn(s.g.Size())), http.StatusTemporaryRedirect)
-	s.stat.inc("mis")
 }
 
 func main() {
@@ -133,15 +141,24 @@ func main() {
 	health.Check()
 	mask = fmt.Sprintf("%%0%dd", int(math.Ceil(math.Log10(float64(*size)))))
 	runtime.GOMAXPROCS(runtime.NumCPU())
+	var err error
+	host, err = os.Hostname()
+	if err != nil {
+		panic(err)
+	}
+	registry := stats.New("origin", host, *port)
 	s := &server{
 		g:        genGraph(*size, *links),
 		imgCache: make([][]byte, *nimg),
-		stat:     newStats(),
+
+		// stats objects
+		bad: registry.Counter("bad"),
+		img: registry.Counter("img"),
+		tim: registry.Timer("page"),
 	}
 	http.HandleFunc("/favicon.ico", http.NotFound)
 	http.HandleFunc("/page/", s.page)
 	http.HandleFunc("/img/", s.image)
 	http.HandleFunc("/", s.redirect)
-	go s.logger()
 	http.ListenAndServe(":"+strconv.Itoa(*port), nil)
 }
