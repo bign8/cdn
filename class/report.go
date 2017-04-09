@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"strings"
 )
@@ -50,6 +51,8 @@ func main() {
 	fh, err := os.Open("data.json")
 	check(err)
 	decoder := json.NewDecoder(fh)
+
+	reports := make(map[string][]string)
 
 	for err == nil {
 		var obj map[string]interface{}
@@ -123,11 +126,21 @@ func main() {
 		}
 
 		// TODO: generate a CSV for plotting
-		fmt.Println("----------------------")
+		reports["hit_miss"] = append(reports["hit_miss"], fmt.Sprintf(
+			"%d, %f, %f", obj["count"], obj["server.neighbor_hit"], obj["server.neighbor_miss"],
+		))
+		reports["render"] = append(reports["render"], fmt.Sprintf(
+			"%d, %f, %f, %f, %f, %f, %f, %f, %f", obj["count"], obj["client.render.min"], obj["client.render.mean"],
+			obj["client.render.50-percentile"], obj["client.render.75-percentile"],
+			obj["client.render.95-percentile"], obj["client.render.99-percentile"],
+			obj["client.render.999-percentile"], obj["client.render.max"],
+		))
 		fmt.Println("count", obj["count"])
-		fmt.Println("neigh_hit", obj["server.neighbor_hit"])
-		fmt.Println("neigh_miss", obj["server.neighbor_miss"])
-		fmt.Println("client.render.(min,mean,99,max)", obj["client.render.min"], obj["client.render.mean"], obj["client.render.99-percentile"], obj["client.render.max"])
-		// fmt.Printf("?? %#v\n", obj)
+	}
+
+	for name, data := range reports {
+		bits := strings.Join(data, "\n")
+		err = ioutil.WriteFile(name+".csv", []byte(bits), 0644)
+		check(err)
 	}
 }
