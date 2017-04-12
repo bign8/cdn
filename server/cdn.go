@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/bign8/cdn/server/DHT"
+
 	redis "gopkg.in/redis.v5"
 )
 
@@ -49,14 +50,35 @@ func (c *cdn) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	item, ok := c.cache[req.URL.Path] // TODO: respect cache timeouts
 	c.mu.RUnlock()
 
+	// if ok { // We have the data!!!
+	// 	item.Send(w)
+	// } else if req.Header.Get(cdnHeader) != "" {
+	// 	log.Print(c.me + " couldn't find response for neighbor")
+	// 	http.NotFound(w, req) // Request was from other CDN server, don't ask others or origin
+	// } else if item, ok = c.checkNeighbors(req.URL.Path); ok {
+	// 	log.Print(c.me + " Check neighbors called from CDNServerHTTP")
+	//
+	// 	item.Send(w) // Found request on neighbor, sending response
+	// } else {
+	// 	log.Print(c.me + " Headed to origin")
+	// 	c.rp.ServeHTTP(w, req) // Couldn't find it anywhere, sending to origin
+	// }
+
 	if ok { // We have the data!!!
 		item.Send(w)
-	} else if req.Header.Get(cdnHeader) != "" {
-		log.Print(c.me + " couldn't find response for neighbor")
-		http.NotFound(w, req) // Request was from other CDN server, don't ask others or origin
-	} else if item, ok = c.checkNeighbors(req.URL.Path); ok {
-		item.Send(w) // Found request on neighbor, sending response
+		log.Print(c.me + " owns data and sending back")
 	} else {
-		c.rp.ServeHTTP(w, req) // Couldn't find it anywhere, sending to origin
+		serverName, owner := c.dht.Who(req.URL.Path)
+		log.Print("serverName gotten from DHT: ", serverName, "And is owner: ", owner)
+		// I own the data and don't have it, getting from origin
+		if serverName == c.me {
+			log.Print(c.me + " owns data and getting it from origin")
+			c.rp.ServeHTTP(w, req) // Couldn't find it anywhere, sending to origin
+		} else { // Send it to the true owner
+			log.Print(c.me+" forwarding req onto owner: ", serverName)
+			// result, _ := c.DHTFetch(req.URL.Path, serverName)
+			// result.Send(w)
+		}
 	}
+
 }

@@ -58,6 +58,7 @@ func main() {
 			MyName:  host,
 		},
 	}
+
 	cdnHandler.rp.Transport = cdnHandler
 	http.Handle("/", cdnHandler)
 

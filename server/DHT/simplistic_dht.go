@@ -21,17 +21,25 @@ const max = math.MaxUint32
 func (sDHT *SimplisticDHT) Update(otherServers []string) {
 	// compare otherservers to prevOthers to see if we want to go through this
 	// entire process
+
 	if sDHT.compareArrays(otherServers) {
-		// log.Print("no change, returning")
+		// log.Print("No change in otherServers, returning without updating DHT")
 		return
+	} else if len(otherServers) == 0 {
+		log.Print("No otherServers yet, returning without updating DHT")
+		return
+	} else {
+		log.Print("Change in otherServers, updating DHT")
 	}
 	var otherServersHashes []int
+
 	for _, e := range otherServers {
 		h := simpleASCIIHash(e, max)
 		sDHT.DataMap[h] = e
 		otherServersHashes = append(otherServersHashes, h)
 	}
-	log.Print("datamap", sDHT.DataMap)
+	log.Print("DHT's datamap", sDHT.DataMap)
+
 	sDHT.assignSubsequents(otherServersHashes)
 	log.Print(sDHT.MyHash, "->", sDHT.nextServer)
 
@@ -53,15 +61,20 @@ func (sDHT *SimplisticDHT) assignSubsequents(otherServersHashes []int) {
 	}
 
 	//I am the last element, need to point at first
-	if myIndex == len(otherServersHashes) {
+	// NOTE: if running manually through redis, the redis server is part of hashes and myIndex should = len(otherServersHashes)
+	if myIndex == len(otherServersHashes)-1 {
 		sDHT.nextServer = otherServersHashes[0]
 	} else {
 		sDHT.nextServer = otherServersHashes[myIndex+1]
 	}
 }
 
+// Iterate through sorted arrays to compare each element
+// TODO: Is there really not a library for this?
 func (sDHT *SimplisticDHT) compareArrays(otherServers []string) bool {
 	if len(sDHT.prevOthers) == 0 {
+		return false
+	} else if len(sDHT.prevOthers) != len(otherServers) {
 		return false
 	}
 	for i, e := range otherServers {
@@ -78,16 +91,15 @@ func (sDHT *SimplisticDHT) Who(query string) (string, bool) {
 	log.Printf("Looking for %v which has hash %v \n", query, queryHash)
 	maxK := 0
 	for k, v := range sDHT.DataMap {
-		if queryHash < k {
+		if k < queryHash {
 			// I am the server covering the portion that wraps past 0 on the ring
-			if sDHT.nextServer < k {
+			if sDHT.nextServer > queryHash {
 				return v, true // Return owner and flag that it is owner
 			}
-		} else if queryHash > k {
-			return v, true // Return owner and flag that it is owner
-		}
-		if k > maxK {
-			maxK = k
+		} else {
+			if k > maxK {
+				maxK = k
+			}
 		}
 	}
 
