@@ -68,16 +68,15 @@ func (c *cdn) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		item.Send(w)
 		log.Print(c.me + " owns data and sending back")
 	} else {
-		serverName, owner := c.dht.Who(req.URL.Path)
-		log.Print("serverName gotten from DHT: ", serverName, "And is owner: ", owner)
+		serverName := c.dht.Who(req.URL.Path)
 		// I own the data and don't have it, getting from origin
 		if serverName == c.me {
 			log.Print(c.me + " owns data and getting it from origin")
 			c.rp.ServeHTTP(w, req) // Couldn't find it anywhere, sending to origin
 		} else { // Send it to the true owner
 			log.Print(c.me+" forwarding req onto owner: ", serverName)
-			// result, _ := c.DHTFetch(req.URL.Path, serverName)
-			// result.Send(w)
+			result, _ := c.DHTFetch(req.URL.Path, serverName)
+			result.Send(w)
 		}
 	}
 

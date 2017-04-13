@@ -26,7 +26,7 @@ func (c *cdn) checkNeighbors(path string) (result response, found bool) {
 	//check specific neighbor according to DHT
 	//if me, pass back, else forward
 	log.Print("Proof this is being hit...?")
-	serverName, _ := c.dht.Who(path)
+	serverName := c.dht.Who(path)
 	log.Print("serverName gotten from DHT: ", serverName)
 	result, found = c.DHTFetch(path, serverName)
 

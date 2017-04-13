@@ -36,6 +36,7 @@ func main() {
 	check(err)
 
 	host, err := os.Hostname()
+
 	check(err)
 	if os.Getenv("HOST") != "" {
 		host = os.Getenv("HOST")
@@ -54,7 +55,7 @@ func main() {
 		red:   red,
 		cache: make(map[string]response),
 		dht: &DHT.SimplisticDHT{
-			DataMap: make(map[int]string),
+			DataMap: make(map[int]*DHT.Pair),
 			MyName:  host,
 		},
 	}
