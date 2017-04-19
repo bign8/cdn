@@ -112,13 +112,16 @@ func (c *cdn) recvUpdates() {
 			log.Println("monitorNeighborsFilters: error 1", err)
 			continue
 		}
+		neighbor := msg.Channel[plen:]
+		if neighbor == c.me {
+			continue // I'm talking to myself!
+		}
+		log.Println("monitorNeighborsFilters message:", neighbor, len(msg.Payload))
 		bits, err := base64.StdEncoding.DecodeString(msg.Payload)
 		if err != nil {
 			log.Println("monitorNeighborsFilters: error 2", err)
 			continue
 		}
-		neighbor := msg.Channel[plen:]
-		log.Println("monitorNeighborsFilters message:", neighbor, msg.Payload)
 		c.ringMu.RLock()
 		obj, ok := c.state[neighbor]
 		c.ringMu.RUnlock()
