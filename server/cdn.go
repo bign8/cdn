@@ -8,7 +8,7 @@ import (
 	"time"
 
 	metrics "github.com/rcrowley/go-metrics"
-
+	boom "github.com/tylertreat/BoomFilters"
 	redis "gopkg.in/redis.v5"
 )
 
@@ -24,9 +24,14 @@ type cdn struct {
 	cap int
 	ps  *redis.PubSub
 
+	// TODO(bign8): abstract these vars to be part of a better cache object
+	// Based off of the second talk in https://www.bigmarker.com/remote-meetup-go/GoSF-Go-Project-Structure-Concurrent-Data-Structures-and-Libraries
+	bloom *boom.BloomFilter
 	cache map[string]response
 	mu    sync.RWMutex
 
+	// TODO(bign8): abstract this to a more logical server ring object
+	state  map[string]*boom.BloomFilter
 	ring   []string
 	ringMu sync.RWMutex
 

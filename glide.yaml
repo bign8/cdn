@@ -1,5 +1,6 @@
 package: github.com/bign8/cdn
 import:
 - package: github.com/rcrowley/go-metrics
+- package: github.com/tylertreat/BoomFilters
 - package: golang.org/x/net
 - package: gopkg.in/redis.v5

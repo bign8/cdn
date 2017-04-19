@@ -1,8 +1,12 @@
-hash: d1f193d8620e39e73251da360f2c2e5d5124a0c9619d4dc4622c2173a1a0d6d0
-updated: 2017-03-19T15:27:19.744187299-06:00
+hash: aa0977b555799c93a4df7ecf06091ee34c95578db238fb933f9a1f029ef139f7
+updated: 2017-04-18T22:06:11.861703643-06:00
 imports:
 - name: github.com/rcrowley/go-metrics
   version: ab2277b1c5d15c3cba104e9cbddbdfc622df5ad8
+  subpackages:
+  - exp
+- name: github.com/tylertreat/BoomFilters
+  version: b282640b93f349cd208f8d5921df2cfaf5780ee2
 - name: golang.org/x/net
   version: e99677b929f5a4903df369945bb205a61376b53f
   subpackages:

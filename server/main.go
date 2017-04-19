@@ -13,6 +13,7 @@ import (
 
 	"github.com/bign8/cdn/util/health"
 	"github.com/bign8/cdn/util/stats"
+	boom "github.com/tylertreat/BoomFilters"
 )
 
 const cdnHeader = "x-bign8-cdn"
@@ -56,6 +57,8 @@ func main() {
 		cap:   *cap,
 		red:   red,
 		cache: make(map[string]response),
+		bloom: boom.NewBloomFilter(1000, 0.01),
+		state: make(map[string]*boom.BloomFilter, 3), // MAGIC-NUMBER(3): close to the number of servers in cluster
 
 		// stats objects
 		cacheSize: registry.Gauge("cacheSize"),
@@ -70,6 +73,7 @@ func main() {
 	// Actually start the server
 	log.Printf(host+": ReverseProxy for %q serving on :%d\n", *target, *port)
 	go cdnHandler.monitorNeighbors()
-	go cdnHandler.monitorNeighborsFilters()
+	go cdnHandler.recvUpdates()
+	go cdnHandler.sendUpdates()
 	check(http.ListenAndServe(":"+strconv.Itoa(*port), nil))
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"log"
 	"net/http"
@@ -9,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	boom "github.com/tylertreat/BoomFilters"
 )
 
 type neighborResult struct {
@@ -102,13 +105,44 @@ func (c *cdn) monitorNeighbors() {
 
 const plen = len("cdn.server.bloom.")
 
-func (c *cdn) monitorNeighborsFilters() {
+func (c *cdn) recvUpdates() {
 	for {
 		msg, err := c.ps.ReceiveMessage()
 		if err != nil {
-			log.Println("monitorNeighborsFilters: error", err)
+			log.Println("monitorNeighborsFilters: error 1", err)
 			continue
 		}
-		log.Println("monitorNeighborsFilters message:", msg.Channel[plen:], msg.Payload)
+		bits, err := base64.StdEncoding.DecodeString(msg.Payload)
+		if err != nil {
+			log.Println("monitorNeighborsFilters: error 2", err)
+			continue
+		}
+		neighbor := msg.Channel[plen:]
+		log.Println("monitorNeighborsFilters message:", neighbor, msg.Payload)
+		c.ringMu.RLock()
+		obj, ok := c.state[neighbor]
+		c.ringMu.RUnlock()
+		if !ok {
+			obj = new(boom.BloomFilter)
+			c.ringMu.Lock()
+			c.state[neighbor] = obj
+			c.ringMu.Unlock()
+		}
+		if err = obj.GobDecode(bits); err != nil {
+			log.Println("monitorNeighborsFilters: error 3", err)
+		}
+	}
+}
+
+func (c *cdn) sendUpdates() {
+	for range time.Tick(15 * time.Second) {
+		c.mu.RLock()
+		bits, err := c.bloom.GobEncode()
+		c.mu.RUnlock()
+		if err == nil {
+			c.red.Publish("cdn.server.bloom."+c.me, base64.StdEncoding.EncodeToString(bits))
+		} else {
+			log.Println("Problem serializing BOOM!", err)
+		}
 	}
 }
