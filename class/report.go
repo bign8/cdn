@@ -135,6 +135,11 @@ func main() {
 			obj["client.render.95-percentile"], obj["client.render.99-percentile"],
 			obj["client.render.999-percentile"], obj["client.render.max"],
 		))
+		reports["client-server"] = append(reports["client-server"], fmt.Sprintf(
+			"%d, %f, %f, %f, %f, %f", obj["count"], obj["client.request.count"],
+			obj["origin.page.count"], obj["server.neighbor_hit"],
+			obj["server.neighbor_miss"], obj["server.s2s_calls"],
+		))
 		fmt.Println("count", obj["count"])
 	}
 
