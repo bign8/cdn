@@ -1,6 +1,7 @@
 package DHT
 
 import (
+	"hash/crc32"
 	"log"
 	"math"
 	"sort"
@@ -40,7 +41,7 @@ func (sDHT *SimplisticDHT) Update(otherServers []string) {
 	}
 	var otherServersHashes []int
 	for _, e := range otherServers {
-		h := simpleASCIIHash(e, max)
+		h := hash(e, max)
 		sDHT.DataMap[h] = &Pair{name: e, subServer: -1}
 		otherServersHashes = append(otherServersHashes, h)
 	}
@@ -53,7 +54,7 @@ func (sDHT *SimplisticDHT) Update(otherServers []string) {
 }
 
 func (sDHT *SimplisticDHT) assignSubsequents(otherServersHashes []int) {
-	sDHT.MyHash = simpleASCIIHash(sDHT.MyName, max)
+	sDHT.MyHash = hash(sDHT.MyName, max)
 	sort.Ints(otherServersHashes)
 	for i, e := range otherServersHashes {
 		if i == len(otherServersHashes)-1 {
@@ -82,7 +83,7 @@ func (sDHT *SimplisticDHT) compareArrays(otherServers []string) bool {
 
 // WHO ...
 func (sDHT *SimplisticDHT) Who(query string) string {
-	queryHash := simpleASCIIHash(query, max)
+	queryHash := hash(query, max)
 	log.Printf("Looking for %v in DHT which has hash %v \n", query, queryHash)
 	maxK := -1
 
@@ -96,4 +97,8 @@ func (sDHT *SimplisticDHT) Who(query string) string {
 		}
 	}
 	return sDHT.DataMap[maxK].name
+}
+
+func hash(input string, capacity uint32) int {
+	return int(crc32.ChecksumIEEE([]byte(input)) % capacity)
 }
