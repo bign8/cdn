@@ -9,7 +9,7 @@ import (
 
 //SimplisticDHT ... Simplistic hashtable, assumes nodes (cdns) hold data in linear order, simply decrement close to query hash to find owner
 type SimplisticDHT struct {
-	DataMap    map[int]*Pair
+	DataMap    map[int]*pair
 	prevOthers []string
 	nextServer int
 	MyName     string
@@ -17,12 +17,20 @@ type SimplisticDHT struct {
 	lastServer bool
 }
 
-type Pair struct {
+type pair struct {
 	name      string
 	subServer int //server next in list
 }
 
 const max = math.MaxUint32
+
+// NewDHT ...
+func NewDHT(host string) (dht SimplisticDHT) {
+	return SimplisticDHT{
+		DataMap: make(map[int]*pair),
+		MyName:  host,
+	}
+}
 
 // Update ...
 func (sDHT *SimplisticDHT) Update(otherServers []string) {
@@ -42,7 +50,7 @@ func (sDHT *SimplisticDHT) Update(otherServers []string) {
 	var otherServersHashes []int
 	for _, e := range otherServers {
 		h := hash(e, max)
-		sDHT.DataMap[h] = &Pair{name: e, subServer: -1}
+		sDHT.DataMap[h] = &pair{name: e, subServer: -1}
 		otherServersHashes = append(otherServersHashes, h)
 	}
 	log.Print("DHT's datamap", sDHT.DataMap)

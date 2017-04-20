@@ -27,7 +27,7 @@ type cdn struct {
 
 	ring   []string
 	ringMu sync.RWMutex
-	dht    *DHT.SimplisticDHT
+	dht    DHT.SimplisticDHT
 }
 
 func (c *cdn) RoundTrip(req *http.Request) (*http.Response, error) {

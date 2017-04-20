@@ -41,7 +41,7 @@ func main() {
 		host = os.Getenv("HOST")
 	}
 
-	// Localhost for local redis server (screenshot), redis for docker compose (./run.sh server in /cdn)
+	// Localhost for local redis server, redis for docker compose
 	// red := redis.NewClient(&redis.Options{Addr: "localhost:6379"})
 	red := redis.NewClient(&redis.Options{Addr: "redis:6379"})
 	check(red.Ping().Err())
@@ -53,11 +53,9 @@ func main() {
 		cap:   *cap,
 		red:   red,
 		cache: make(map[string]response),
-		dht: &DHT.SimplisticDHT{
-			DataMap: make(map[int]*DHT.Pair),
-			MyName:  host,
-		},
+		dht:   DHT.NewDHT(host),
 	}
+
 	cdnHandler.rp.Transport = cdnHandler
 	http.Handle("/", cdnHandler)
 
