@@ -19,7 +19,7 @@ type SimplisticDHT struct {
 
 type pair struct {
 	name      string
-	subServer int //server next in list
+	subServer int //server next in list/ring
 }
 
 const max = math.MaxUint32
@@ -98,10 +98,9 @@ func (sDHT *SimplisticDHT) Who(query string) string {
 	for k := range sDHT.DataMap {
 		if queryHash > k && queryHash < sDHT.DataMap[k].subServer {
 			return sDHT.DataMap[k].name
-		} else {
-			if k > maxK {
-				maxK = k
-			}
+		}
+		if k > maxK {
+			maxK = k
 		}
 	}
 	return sDHT.DataMap[maxK].name
