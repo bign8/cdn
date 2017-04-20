@@ -36,7 +36,6 @@ func main() {
 	check(err)
 
 	host, err := os.Hostname()
-
 	check(err)
 	if os.Getenv("HOST") != "" {
 		host = os.Getenv("HOST")
@@ -59,13 +58,11 @@ func main() {
 			MyName:  host,
 		},
 	}
-
 	cdnHandler.rp.Transport = cdnHandler
 	http.Handle("/", cdnHandler)
 
 	// Actually start the server
 	log.Printf("ReverseProxy for %q serving on :%d\n", *target, *port)
 	go cdnHandler.monitorNeighbors()
-
 	check(http.ListenAndServe(":"+strconv.Itoa(*port), nil))
 }

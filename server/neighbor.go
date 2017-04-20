@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"errors"
 	"log"
 	"net/http"
@@ -17,75 +16,14 @@ type neighborResult struct {
 	err error
 }
 
-func (c *cdn) checkNeighbors(path string) (result response, found bool) {
-	// c.ringMu.RLock()
-	// neighbors := c.ring[:]
-	// c.ringMu.RUnlock()
-	// ctx, done := context.WithTimeout(context.Background(), time.Second*5)
-
-	//check specific neighbor according to DHT
-	//if me, pass back, else forward
-	log.Print("Proof this is being hit...?")
-	serverName := c.dht.Who(path)
-	log.Print("serverName gotten from DHT: ", serverName)
-	result, found = c.DHTFetch(path, serverName)
-
-	// // Parallel fetching function
-	// fetch := func(n string, fin chan<- neighborResult) {
-	//
-	// 	target := "http://" + n + ":" + strconv.Itoa(*port) + path
-	// 	log.Print("Normal target: ", target)
-	// 	var r neighborResult
-	// 	if req, err := http.NewRequest(http.MethodGet, target, nil); err != nil {
-	// 		r.err = err
-	// 	} else {
-	// 		req = req.WithContext(ctx)
-	// 		req.Header.Set(cdnHeader, c.me)
-	// 		if res, err := http.DefaultClient.Do(req); err != nil {
-	// 			r.err = err
-	// 		} else if res.StatusCode == http.StatusOK {
-	// 			r.res, r.err = newResponse(res)
-	// 		} else {
-	// 			r.err = errors.New("fetch: bad response: " + res.Status)
-	// 		}
-	// 	}
-	// 	fin <- r
-	// }
-	//
-	// // Fetch requests in paralell
-	// results := make(chan neighborResult, len(neighbors))
-	// for _, neighbor := range neighbors {
-	// 	go fetch(neighbor, results)
-	// }
-	//
-	// // fetch all results until found
-	// for i := 0; i < len(neighbors); i++ {
-	// 	back := <-results
-	// 	if !found && back.err == nil {
-	// 		log.Print(c.me + " Found response on neighbor")
-	// 		done()
-	// 		found = true
-	// 		result = back.res
-	// 	} else if !found && back.err != nil {
-	// 		log.Print(c.me + " Problem fetching from neighbor " + back.err.Error())
-	// 	}
-	// }
-	// done()
-
-	return result, found
-}
-
 func (c *cdn) DHTFetch(path string, owner string) (result response, found bool) {
-
 	log.Print("Making a DHT fetch")
-	ctx, done := context.WithTimeout(context.Background(), time.Second*5)
 	target := "http://" + owner + ":" + strconv.Itoa(*port) + path
 	log.Print("DHT target: ", target)
 	var r neighborResult
 	if req, err := http.NewRequest(http.MethodGet, target, nil); err != nil {
 		r.err = err
 	} else {
-		req = req.WithContext(ctx)
 		req.Header.Set(cdnHeader, c.me)
 		if res, err := http.DefaultClient.Do(req); err != nil {
 			r.err = err
@@ -95,8 +33,7 @@ func (c *cdn) DHTFetch(path string, owner string) (result response, found bool) 
 			r.err = errors.New("fetch: bad response: " + res.Status)
 		}
 	}
-	done()
-	return r.res, true
+	return r.res, r.err == nil
 }
 
 func (c *cdn) monitorNeighbors() {

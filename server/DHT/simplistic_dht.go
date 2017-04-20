@@ -52,9 +52,7 @@ func (sDHT *SimplisticDHT) Update(otherServers []string) {
 	sDHT.prevOthers = otherServers[:]
 }
 
-// assign subsequent server to nextServer pointer for this server
 func (sDHT *SimplisticDHT) assignSubsequents(otherServersHashes []int) {
-	//add my hash to the list, sort the list and find my idex
 	sDHT.MyHash = simpleASCIIHash(sDHT.MyName, max)
 	sort.Ints(otherServersHashes)
 	for i, e := range otherServersHashes {
@@ -85,10 +83,10 @@ func (sDHT *SimplisticDHT) compareArrays(otherServers []string) bool {
 // WHO ...
 func (sDHT *SimplisticDHT) Who(query string) string {
 	queryHash := simpleASCIIHash(query, max)
-	log.Printf("Looking for %v which has hash %v \n", query, queryHash)
+	log.Printf("Looking for %v in DHT which has hash %v \n", query, queryHash)
 	maxK := -1
 
-	for k, _ := range sDHT.DataMap {
+	for k := range sDHT.DataMap {
 		if queryHash > k && queryHash < sDHT.DataMap[k].subServer {
 			return sDHT.DataMap[k].name
 		} else {
@@ -97,8 +95,5 @@ func (sDHT *SimplisticDHT) Who(query string) string {
 			}
 		}
 	}
-
-	log.Printf("Return zero owner")
 	return sDHT.DataMap[maxK].name
-
 }

@@ -1,6 +1,6 @@
 package DHT
 
-type dht interface {
-	Who()
-	Update()
+type DHT interface {
+	Who(string) string
+	Update([]string)
 }
