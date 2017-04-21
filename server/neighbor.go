@@ -63,7 +63,7 @@ func (c *cdn) monitorNeighbors() {
 
 		// Use string representation of neighbors to determine if update is necessary
 		if next := strings.Join(result, ", "); next != last {
-			log.Print(c.me + " is updating server list: [" + next + "]")
+			log.Print(c.me + ": Updating server list: [" + next + "]")
 			last = next
 			c.ringMu.Lock()
 			c.ring = result

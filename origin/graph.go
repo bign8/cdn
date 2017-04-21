@@ -15,7 +15,7 @@ func genGraph(size, numLinks int) graph {
 	if numLinks > size {
 		numLinks = size - 1
 	}
-	log.Print("Starting Graph Creation.")
+	log.Print(host + ": Starting Graph Creation.")
 	now := time.Now()
 	G := make(graph, size)
 	for i := range G {
@@ -34,6 +34,6 @@ func genGraph(size, numLinks int) graph {
 		x = rander.Intn(numLinks)
 		G[i][1], G[i][x] = G[i][x], G[i][1]
 	}
-	log.Printf("Graph Completed: %s", time.Since(now))
+	log.Printf(host+": Graph Completed: %s", time.Since(now))
 	return G
 }

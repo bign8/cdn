@@ -2,6 +2,7 @@ package health
 
 import (
 	"flag"
+	"log"
 	"net/http"
 	"os"
 )
@@ -25,6 +26,7 @@ func Static(msg string) http.HandlerFunc {
 
 // Check verifies a particular services give a 200 hc response
 func Check() {
+	log.SetFlags(log.Ldate | log.Lmicroseconds)
 	flag.Parse()
 	http.DefaultServeMux = &http.ServeMux{} // Resets previous bindings
 	http.HandleFunc("/ping", Static("PONG"))

@@ -5,6 +5,9 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"sync"
+	"time"
+
+	metrics "github.com/rcrowley/go-metrics"
 
 	"github.com/bign8/cdn/server/DHT"
 
@@ -28,6 +31,13 @@ type cdn struct {
 	ring   []string
 	ringMu sync.RWMutex
 	dht    DHT.DHT
+
+	// stats
+	cacheSize metrics.Gauge
+	requests  metrics.Timer
+	s2scalls  metrics.Counter
+	nHit      metrics.Counter
+	nMiss     metrics.Counter
 }
 
 func (c *cdn) RoundTrip(req *http.Request) (*http.Response, error) {
@@ -40,12 +50,14 @@ func (c *cdn) RoundTrip(req *http.Request) (*http.Response, error) {
 		}
 		c.mu.Lock()
 		c.cache[req.URL.Path] = r
+		c.cacheSize.Update(int64(len(c.cache)))
 		c.mu.Unlock()
 	}
 	return res, err
 }
 
 func (c *cdn) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	now := time.Now()
 	c.mu.RLock()
 	item, ok := c.cache[req.URL.Path] // TODO: respect cache timeouts
 	c.mu.RUnlock()
@@ -67,4 +79,5 @@ func (c *cdn) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 
+	c.requests.UpdateSince(now) // TODO: toggle which timer based on the branch of the redirect tree above
 }
