@@ -7,8 +7,8 @@ import (
 	"sort"
 )
 
-//SimplisticDHT ... Simplistic hashtable, assumes nodes (cdns) hold data in linear order, simply decrement close to query hash to find owner
-type SimplisticDHT struct {
+// simplisticDHT ... Simplistic hashtable, assumes nodes (cdns) hold data in linear order, simply decrement close to query hash to find owner
+type simplisticDHT struct {
 	DataMap    map[int]*pair
 	prevOthers []string
 	nextServer int
@@ -25,15 +25,15 @@ type pair struct {
 const max = math.MaxUint32
 
 // NewDHT ...
-func NewDHT(host string) (dht SimplisticDHT) {
-	return SimplisticDHT{
+func NewDHT(host string) (dht DHT) {
+	return &simplisticDHT{
 		DataMap: make(map[int]*pair),
 		MyName:  host,
 	}
 }
 
 // Update ...
-func (sDHT *SimplisticDHT) Update(otherServers []string) {
+func (sDHT *simplisticDHT) Update(otherServers []string) {
 	// compare otherservers to prevOthers to see if we want to go through this
 	// entire process
 
@@ -61,7 +61,7 @@ func (sDHT *SimplisticDHT) Update(otherServers []string) {
 	sDHT.prevOthers = otherServers[:]
 }
 
-func (sDHT *SimplisticDHT) assignSubsequents(otherServersHashes []int) {
+func (sDHT *simplisticDHT) assignSubsequents(otherServersHashes []int) {
 	sDHT.MyHash = hash(sDHT.MyName, max)
 	sort.Ints(otherServersHashes)
 	for i, e := range otherServersHashes {
@@ -75,7 +75,7 @@ func (sDHT *SimplisticDHT) assignSubsequents(otherServersHashes []int) {
 
 // Iterate through sorted arrays to compare each element
 // TODO: Is there really not a library for this?
-func (sDHT *SimplisticDHT) compareArrays(otherServers []string) bool {
+func (sDHT *simplisticDHT) compareArrays(otherServers []string) bool {
 	if len(sDHT.prevOthers) == 0 {
 		return false
 	} else if len(sDHT.prevOthers) != len(otherServers) {
@@ -89,8 +89,8 @@ func (sDHT *SimplisticDHT) compareArrays(otherServers []string) bool {
 	return true
 }
 
-// WHO ...
-func (sDHT *SimplisticDHT) Who(query string) string {
+// Who ...
+func (sDHT *simplisticDHT) Who(query string) string {
 	queryHash := hash(query, max)
 	log.Printf("Looking for %v in DHT which has hash %v \n", query, queryHash)
 	maxK := -1

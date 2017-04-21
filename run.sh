@@ -3,7 +3,7 @@
 trap 'docker-compose down' EXIT
 
 function waitFor () {
-  timeout=$(( $(date +"%s") + 60 ))  # retry window of 60 seconds
+  timeout=$(( $(date +"%s") + 60))  # retry window of 60 seconds
   while ! curl -s "$1" | grep "$2"; do
     if [ "$(date +"%s")" -gt "$timeout" ]; then
       echo "$1 was not ready within one minute."
