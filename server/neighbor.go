@@ -14,6 +14,10 @@ import (
 	boom "github.com/tylertreat/BoomFilters"
 )
 
+// Add stats on false positives
+// - TODO: bloom miss
+// - TODO: push content that is already there
+
 func (c *cdn) DHTFetch(path string, owner string) (result response, err error) {
 	target := "http://" + owner + ":" + strconv.Itoa(*port) + path
 	log.Print("DHT target: ", target)
