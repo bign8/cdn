@@ -1,11 +1,11 @@
 package main
 
 import (
-	"context"
 	"encoding/base64"
 	"errors"
 	"log"
 	"net/http"
+	"runtime/debug"
 	"sort"
 	"strconv"
 	"strings"
@@ -19,59 +19,34 @@ type neighborResult struct {
 	err error
 }
 
-func (c *cdn) checkNeighbors(path string) (result response, found bool) {
-	c.ringMu.RLock()
-	neighbors := c.ring[:]
-	c.ringMu.RUnlock()
-	ctx, done := context.WithTimeout(context.Background(), time.Second*5)
-
-	// Parallel fetching function
-	fetch := func(n string, fin chan<- neighborResult) {
-		c.s2scalls.Inc(1)
-		target := "http://" + n + ":" + strconv.Itoa(*port) + path
-		var r neighborResult
-		if req, err := http.NewRequest(http.MethodGet, target, nil); err != nil {
+func (c *cdn) DHTFetch(path string, owner string) (result response, found bool) {
+	log.Print("Making a DHT fetch")
+	target := "http://" + owner + ":" + strconv.Itoa(*port) + path
+	log.Print("DHT target: ", target)
+	var r neighborResult
+	if req, err := http.NewRequest(http.MethodGet, target, nil); err != nil {
+		r.err = err
+	} else {
+		req.Header.Set(cdnHeader, c.me)
+		if res, err := http.DefaultClient.Do(req); err != nil {
 			r.err = err
+		} else if res.StatusCode == http.StatusOK {
+			r.res, r.err = newResponse(res)
 		} else {
-			req = req.WithContext(ctx)
-			req.Header.Set(cdnHeader, c.me)
-			if res, err := http.DefaultClient.Do(req); err != nil {
-				r.err = err
-			} else if res.StatusCode == http.StatusOK {
-				r.res, r.err = newResponse(res)
-			} else {
-				r.err = errors.New("fetch: bad response: " + res.Status)
-			}
-		}
-		fin <- r
-	}
-
-	// Fetch requests in paralell
-	results := make(chan neighborResult, len(neighbors))
-	for _, neighbor := range neighbors {
-		go fetch(neighbor, results)
-	}
-
-	// fetch all results until found
-	for i := 0; i < len(neighbors); i++ {
-		back := <-results
-		if !found && back.err == nil {
-			c.nHit.Inc(1)
-			log.Printf("%s: Found response on neighbor for %q", c.me, path)
-			done()
-			found = true
-			result = back.res
-		} else if !found && back.err != nil {
-			c.nMiss.Inc(1)
-			log.Printf("%s: Problem fetching %q from neighbor %s", c.me, path, back.err)
+			r.err = errors.New("fetch: bad response: " + res.Status)
 		}
 	}
-	done()
-	return result, found
+	return r.res, r.err == nil
 }
 
 func (c *cdn) monitorNeighbors() {
 	var last string
+	defer func() {
+		if r := recover(); r != nil {
+			log.Println("Recovering from catastophic ERROR in server.", r)
+			debug.PrintStack()
+		}
+	}()
 	for {
 		// Get set from redis
 		servers, err := c.red.SMembers("cdn-servers").Result()
@@ -97,6 +72,7 @@ func (c *cdn) monitorNeighbors() {
 			c.ring = result
 			c.ringMu.Unlock()
 		}
+		c.dht.Update(result[:])
 
 		// Wait for another cycle // TODO: listen to pub-sub for updates or something
 		time.Sleep(time.Second * 5)

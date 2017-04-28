@@ -11,6 +11,7 @@ import (
 
 	redis "gopkg.in/redis.v5"
 
+	"github.com/bign8/cdn/server/DHT"
 	"github.com/bign8/cdn/util/health"
 	"github.com/bign8/cdn/util/stats"
 	boom "github.com/tylertreat/BoomFilters"
@@ -24,6 +25,7 @@ var (
 	cap    = flag.Int("cap", 20, "How many requests to store in cache")
 )
 
+//TODO: better fun error handlings
 func check(err error) {
 	if err != nil {
 		panic(err)
@@ -37,7 +39,12 @@ func main() {
 
 	host, err := os.Hostname()
 	check(err)
+	if os.Getenv("HOST") != "" {
+		host = os.Getenv("HOST")
+	}
 
+	// Localhost for local redis server, redis for docker compose
+	// red := redis.NewClient(&redis.Options{Addr: "localhost:6379"})
 	registry := stats.New("server", host, *port)
 
 	opts, err := redis.ParseURL("redis://" + os.Getenv("REDIS"))
@@ -59,6 +66,7 @@ func main() {
 		cache: make(map[string]response),
 		bloom: boom.NewBloomFilter(1000, 0.01),
 		state: make(map[string]*boom.BloomFilter, 3), // MAGIC-NUMBER(3): close to the number of servers in cluster
+		dht:   DHT.NewDHT(host),
 
 		// stats objects
 		cacheSize: registry.Gauge("cacheSize"),
@@ -67,6 +75,7 @@ func main() {
 		nHit:      registry.Counter("neighbor_hit"),
 		nMiss:     registry.Counter("neighbor_miss"),
 	}
+
 	cdnHandler.rp.Transport = cdnHandler
 	http.Handle("/", cdnHandler)
 

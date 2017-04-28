@@ -10,6 +10,8 @@ import (
 	metrics "github.com/rcrowley/go-metrics"
 	boom "github.com/tylertreat/BoomFilters"
 	redis "gopkg.in/redis.v5"
+
+	"github.com/bign8/cdn/server/DHT"
 )
 
 var (
@@ -34,6 +36,7 @@ type cdn struct {
 	state  map[string]*boom.BloomFilter
 	ring   []string
 	ringMu sync.RWMutex
+	dht    DHT.DHT
 
 	// stats
 	cacheSize metrics.Gauge
@@ -65,16 +68,22 @@ func (c *cdn) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	item, ok := c.cache[req.URL.Path] // TODO: respect cache timeouts
 	c.mu.RUnlock()
 
-	if ok { // We have the data!!!
-		log.Printf("%s: We have the data for %q", c.me, req.URL.Path)
+	if ok {
+		// Owns data, has data, and sending it back.
 		item.Send(w)
-	} else if req.Header.Get(cdnHeader) != "" {
-		log.Print(c.me + ": Couldn't find response for neighbor: " + req.URL.Path)
-		http.NotFound(w, req) // Request was from other CDN server, don't ask others or origin
-	} else if item, ok = c.checkNeighbors(req.URL.Path); ok {
-		item.Send(w) // Found request on neighbor, sending response
+		log.Print(c.me + " owns data and sending back")
 	} else {
-		c.rp.ServeHTTP(w, req) // Couldn't find it anywhere, sending to origin
+		serverName := c.dht.Who(req.URL.Path)
+		// I own the data and don't have it, getting from origin
+		if serverName == c.me {
+			log.Print(c.me + " owns data and getting it from origin")
+			c.rp.ServeHTTP(w, req) // Couldn't find it anywhere, sending to origin
+		} else { // Send it to the true owner
+			log.Print(c.me+" forwarding req onto owner: ", serverName)
+			result, _ := c.DHTFetch(req.URL.Path, serverName)
+			result.Send(w)
+		}
 	}
+
 	c.requests.UpdateSince(now) // TODO: toggle which timer based on the branch of the redirect tree above
 }
