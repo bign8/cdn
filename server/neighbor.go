@@ -14,29 +14,22 @@ import (
 	boom "github.com/tylertreat/BoomFilters"
 )
 
-type neighborResult struct {
-	res response
-	err error
-}
-
-func (c *cdn) DHTFetch(path string, owner string) (result response, found bool) {
-	log.Print("Making a DHT fetch")
+func (c *cdn) DHTFetch(path string, owner string) (result response, err error) {
 	target := "http://" + owner + ":" + strconv.Itoa(*port) + path
 	log.Print("DHT target: ", target)
-	var r neighborResult
-	if req, err := http.NewRequest(http.MethodGet, target, nil); err != nil {
-		r.err = err
-	} else {
+	var (
+		req *http.Request
+		res *http.Response
+	)
+	if req, err = http.NewRequest(http.MethodGet, target, nil); err == nil {
 		req.Header.Set(cdnHeader, c.me)
-		if res, err := http.DefaultClient.Do(req); err != nil {
-			r.err = err
-		} else if res.StatusCode == http.StatusOK {
-			r.res, r.err = newResponse(res)
-		} else {
-			r.err = errors.New("fetch: bad response: " + res.Status)
+		if res, err = http.DefaultClient.Do(req); err == nil && res.StatusCode == http.StatusOK {
+			result, err = newResponse(res)
+		} else if err == nil {
+			err = errors.New("fetch: bad response: " + res.Status)
 		}
 	}
-	return r.res, r.err == nil
+	return result, err
 }
 
 func (c *cdn) monitorNeighbors() {
