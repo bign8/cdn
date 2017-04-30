@@ -76,7 +76,10 @@ func (c *cdn) monitorNeighbors() {
 	}
 }
 
-const plen = len("cdn.server.bloom.")
+const (
+	prefix = "cdn.server.bloom."
+	prelen = len(prefix)
+)
 
 func (c *cdn) recvUpdates() {
 	for {
@@ -85,7 +88,7 @@ func (c *cdn) recvUpdates() {
 			log.Println("monitorNeighborsFilters: error 1", err)
 			continue
 		}
-		neighbor := msg.Channel[plen:]
+		neighbor := msg.Channel[prelen:]
 		if neighbor == c.me {
 			continue // I'm talking to myself!
 		}
@@ -116,7 +119,7 @@ func (c *cdn) sendUpdates() {
 		bits, err := c.bloom.GobEncode()
 		c.mu.RUnlock()
 		if err == nil {
-			c.red.Publish("cdn.server.bloom."+c.me, base64.StdEncoding.EncodeToString(bits))
+			c.red.Publish(prefix+c.me, base64.StdEncoding.EncodeToString(bits))
 		} else {
 			log.Println("Problem serializing BOOM!", err)
 		}

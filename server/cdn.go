@@ -52,11 +52,13 @@ func (c *cdn) RoundTrip(req *http.Request) (*http.Response, error) {
 		var r response
 		r, err = newResponse(res)
 		if err != nil {
+			log.Print(c.me + " problem creating newResponse " + err.Error())
 			return res, err
 		}
 		c.mu.Lock()
 		c.cache[req.URL.Path] = r
 		c.cacheSize.Update(int64(len(c.cache)))
+		c.bloom.Add([]byte(req.URL.Path))
 		c.mu.Unlock()
 	}
 	return res, err
