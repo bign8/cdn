@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/base64"
 	"errors"
+	"hash/fnv"
 	"log"
 	"net/http"
 	"runtime/debug"
@@ -26,7 +27,7 @@ func (c *cdn) DHTFetch(path string, owner string) (result response, err error) {
 		res *http.Response
 	)
 	if req, err = http.NewRequest(http.MethodGet, target, nil); err == nil {
-		req.Header.Set(cdnHeader, c.me)
+		// req.Header.Set(cdnHeader, c.me)
 		if res, err = http.DefaultClient.Do(req); err == nil && res.StatusCode == http.StatusOK {
 			result, err = newResponse(res)
 		} else if err == nil {
@@ -103,6 +104,7 @@ func (c *cdn) recvUpdates() {
 		c.ringMu.RUnlock()
 		if !ok {
 			obj = new(boom.BloomFilter)
+			obj.SetHash(fnv.New64()) // so we don't get Null pointers
 			c.ringMu.Lock()
 			c.state[neighbor] = obj
 			c.ringMu.Unlock()
@@ -114,12 +116,21 @@ func (c *cdn) recvUpdates() {
 }
 
 func (c *cdn) sendUpdates() {
+	var last string
 	for range time.Tick(15 * time.Second) {
 		c.mu.RLock()
 		bits, err := c.bloom.GobEncode()
 		c.mu.RUnlock()
 		if err == nil {
-			c.red.Publish(prefix+c.me, base64.StdEncoding.EncodeToString(bits))
+			next := base64.StdEncoding.EncodeToString(bits)
+			if next != last {
+				_, err = c.red.Publish(prefix+c.me, next).Result()
+				if err == nil {
+					last = next
+				} else {
+					log.Println("Problem sending", err)
+				}
+			}
 		} else {
 			log.Println("Problem serializing BOOM!", err)
 		}

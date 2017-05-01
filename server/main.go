@@ -77,6 +77,7 @@ func main() {
 	}
 
 	cdnHandler.rp.Transport = cdnHandler
+	http.HandleFunc("/2neighbor", cdnHandler.fromNeighbor) // TODO: make this more RESTful
 	http.Handle("/", cdnHandler)
 
 	// Actually start the server
