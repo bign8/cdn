@@ -1,6 +1,6 @@
 # Server
 
-TODO: use english better here
+TODO (lisa): use english better here
 
 A CDN server does cool stuff
 

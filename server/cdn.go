@@ -53,6 +53,7 @@ type cdn struct {
 	s2scalls  metrics.Counter
 	nHit      metrics.Counter
 	nMiss     metrics.Counter
+	fPush     metrics.Counter
 }
 
 func (c *cdn) fromNeighbor(w http.ResponseWriter, req *http.Request) {
@@ -61,6 +62,14 @@ func (c *cdn) fromNeighbor(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	what := req.Header.Get(cdnHeader)
+
+	c.mu.RLock()
+	_, ok := c.cache[what]
+	c.mu.RUnlock()
+	if ok {
+		c.fPush.Inc(1)
+	}
+
 	req.Header.Del(cdnHeader)
 	defer req.Body.Close()
 	bits, err := ioutil.ReadAll(req.Body)
@@ -108,7 +117,7 @@ func (c *cdn) RoundTrip(req *http.Request) (*http.Response, error) {
 }
 
 func (c *cdn) postToNeighbors(r response, path, who string) {
-	log.Print(c.me, " is pushing ", path, " to neighbor ", who, "TODO")
+	log.Print(c.me, " is pushing ", path, " to neighbor ", who)
 	req, err := http.NewRequest(http.MethodPost, "http://"+who+":"+strconv.Itoa(*port)+"/2neighbor", bytes.NewReader(r.body))
 	if err != nil {
 		log.Print(c.me, " problem creating request ", err.Error())

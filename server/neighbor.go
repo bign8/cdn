@@ -15,10 +15,6 @@ import (
 	boom "github.com/tylertreat/BoomFilters"
 )
 
-// Add stats on false positives
-// - TODO: bloom miss
-// - TODO: push content that is already there
-
 func (c *cdn) DHTFetch(path string, owner string) (result response, err error) {
 	target := "http://" + owner + ":" + strconv.Itoa(*port) + path
 	log.Print("DHT target: ", target)
@@ -72,7 +68,7 @@ func (c *cdn) monitorNeighbors() {
 		}
 		c.dht.Update(result[:])
 
-		// Wait for another cycle // TODO: listen to pub-sub for updates or something
+		// Wait for another cycle // TODO (bign8): listen to pub-sub for updates or something
 		time.Sleep(time.Second * 5)
 	}
 }

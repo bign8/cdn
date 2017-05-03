@@ -25,7 +25,7 @@ var (
 	cap    = flag.Int("cap", 20, "How many requests to store in cache")
 )
 
-//TODO: better fun error handlings
+//TODO (bign8): better fun error handlings
 func check(err error) {
 	if err != nil {
 		panic(err)
@@ -74,10 +74,11 @@ func main() {
 		s2scalls:  registry.Counter("s2s_calls"),
 		nHit:      registry.Counter("neighbor_hit"),
 		nMiss:     registry.Counter("neighbor_miss"),
+		fPush:     registry.Counter("force_push"),
 	}
 
 	cdnHandler.rp.Transport = cdnHandler
-	http.HandleFunc("/2neighbor", cdnHandler.fromNeighbor) // TODO: make this more RESTful
+	http.HandleFunc("/2neighbor", cdnHandler.fromNeighbor) // TODO (bign8): make this more RESTful
 	http.Handle("/", cdnHandler)
 
 	// Actually start the server
