@@ -16,6 +16,7 @@ import (
 )
 
 func (c *cdn) DHTFetch(path string, owner string) (result response, err error) {
+	c.s2scalls.Inc(1)
 	target := "http://" + owner + ":" + strconv.Itoa(*port) + path
 	log.Print("DHT target: ", target)
 	var (

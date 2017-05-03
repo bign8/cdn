@@ -176,9 +176,9 @@ func (c *cdn) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			res.Send(w)
 			return // Successfull neighbor check!
 		}
-		c.nMiss.Inc(1)
 		log.Print(c.me, " problem fetching ", req.URL.Path, " from ", who)
 	}
+	c.nMiss.Inc(1)
 
 	// Neighbor didn't have it or we ran into another issue, requesting from origin
 	c.rp.ServeHTTP(w, req)
