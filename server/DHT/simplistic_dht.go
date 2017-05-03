@@ -74,7 +74,7 @@ func (sDHT *simplisticDHT) assignSubsequents(otherServersHashes []int) {
 }
 
 // Iterate through sorted arrays to compare each element
-// TODO: Is there really not a library for this?
+// TODO (lisa): Is there really not a library for this?
 func (sDHT *simplisticDHT) compareArrays(otherServers []string) bool {
 	if len(sDHT.prevOthers) == 0 {
 		return false

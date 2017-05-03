@@ -14,6 +14,7 @@ import (
 	"github.com/bign8/cdn/server/DHT"
 	"github.com/bign8/cdn/util/health"
 	"github.com/bign8/cdn/util/stats"
+	boom "github.com/tylertreat/BoomFilters"
 )
 
 const cdnHeader = "x-bign8-cdn"
@@ -24,7 +25,7 @@ var (
 	cap    = flag.Int("cap", 20, "How many requests to store in cache")
 )
 
-//TODO: better fun error handlings
+//TODO (bign8): better fun error handlings
 func check(err error) {
 	if err != nil {
 		panic(err)
@@ -46,16 +47,25 @@ func main() {
 	// red := redis.NewClient(&redis.Options{Addr: "localhost:6379"})
 	registry := stats.New("server", host, *port)
 
-	red := redis.NewClient(&redis.Options{Addr: "redis:6379"})
+	opts, err := redis.ParseURL("redis://" + os.Getenv("REDIS"))
+	check(err)
+	red := redis.NewClient(opts) //&redis.Options{Addr: "localhost:6379"})
 	check(red.Ping().Err())
 	red.SAdd("cdn-servers", host)
 
+	pubsub, err := red.PSubscribe("cdn.server.bloom.*")
+	check(err)
+	defer pubsub.Close()
+
 	cdnHandler := &cdn{
+		ps:    pubsub,
 		me:    host,
 		rp:    httputil.NewSingleHostReverseProxy(uri),
 		cap:   *cap,
 		red:   red,
 		cache: make(map[string]response),
+		bloom: boom.NewBloomFilter(1000, 0.01),
+		state: make(map[string]*boom.BloomFilter, 3), // MAGIC-NUMBER(3): close to the number of servers in cluster
 		dht:   DHT.NewDHT(host),
 
 		// stats objects
@@ -64,13 +74,17 @@ func main() {
 		s2scalls:  registry.Counter("s2s_calls"),
 		nHit:      registry.Counter("neighbor_hit"),
 		nMiss:     registry.Counter("neighbor_miss"),
+		fPush:     registry.Counter("force_push"),
 	}
 
 	cdnHandler.rp.Transport = cdnHandler
+	http.HandleFunc("/2neighbor", cdnHandler.fromNeighbor) // TODO (bign8): make this more RESTful
 	http.Handle("/", cdnHandler)
 
 	// Actually start the server
 	log.Printf(host+": ReverseProxy for %q serving on :%d\n", *target, *port)
 	go cdnHandler.monitorNeighbors()
+	go cdnHandler.recvUpdates()
+	go cdnHandler.sendUpdates()
 	check(http.ListenAndServe(":"+strconv.Itoa(*port), nil))
 }
