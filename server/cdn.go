@@ -57,7 +57,7 @@ type cdn struct {
 
 func (c *cdn) fromNeighbor(w http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodPost {
-		c.ServeHTTP(w, req)
+		http.Error(w, "no touchie!", http.StatusExpectationFailed)
 		return
 	}
 	what := req.Header.Get(cdnHeader)
