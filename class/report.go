@@ -48,7 +48,7 @@ func avg(vals []interface{}) interface{} {
 }
 
 func main() {
-	fh, err := os.Open("data.json")
+	fh, err := os.Open("class/v2/data.json")
 	check(err)
 	decoder := json.NewDecoder(fh)
 
@@ -95,6 +95,8 @@ func main() {
 			case "neighbor_miss":
 				fallthrough
 			case "neighbor_hit":
+				fallthrough
+			case "force_push":
 				obj[key] = sum(values)
 
 				// Average
