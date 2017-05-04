@@ -8,6 +8,8 @@ import (
 	"strings"
 )
 
+const version = "v3"
+
 func check(e error) {
 	if e != nil {
 		panic(e)
@@ -48,7 +50,7 @@ func avg(vals []interface{}) interface{} {
 }
 
 func main() {
-	fh, err := os.Open("class/v2/data.json")
+	fh, err := os.Open("class/" + version + "/data.json")
 	check(err)
 	decoder := json.NewDecoder(fh)
 
@@ -147,7 +149,7 @@ func main() {
 
 	for name, data := range reports {
 		bits := strings.Join(data, "\n")
-		err = ioutil.WriteFile(name+".csv", []byte(bits), 0644)
+		err = ioutil.WriteFile("class/"+version+"/"+name+".csv", []byte(bits), 0644)
 		check(err)
 	}
 }
