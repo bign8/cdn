@@ -9,8 +9,8 @@
 \usepackage{tipa}
 \usepackage{amsmath}
 \usepackage{verbatim} % for \begin{comment}
-%\usepackage{caption} % for subfigures
-%\usepackage{subcaption} % for subfigures
+\usepackage{caption} % for subfigures
+\usepackage{subcaption} % for subfigures
 
 \begin{document}
 \title{CDN Improvements with Bloom Push and DHTs}
@@ -31,16 +31,85 @@
 \section{Introduction}\label{sec:intro}
 ...
 
-The rest of this paper is organized as follows.  We discuss the different architectures in Section~\ref{sec:back} and our research goals in Section~\ref{sec:hypothesis}.  The methods we used to analyze this hypothesis are described in Section~\ref{sec:method}, followed by the analysis of the data in Section~\ref{sec:results}.  The threats to validity are described in Section~\ref{sec:validity}, followed by general discussion in Section~\ref{sec:discussion}.  Finally, we conclude in Section~\ref{sec:conclusion} and give potential research extensions in Section~\ref{sec:future}.
+The rest of this paper is organized as follows.  We discuss background, related works, and technologies used in ~\ref{sec:back}.  Implementation details are in Section~\ref{sec:method}, followed an analysis of the system in Section~\ref{sec:results}..  Finally, we conclude in Section~\ref{sec:conclusion}. 
 
 \section{Background}\label{sec:back}
-...
+\subsection*{Related Work}
+\subsection*{Bloom Filters and DHT}
+\subsection*{Chosen Technologies}
+... ~\cite{docker} LEAVE AT LEAST ONE CITATION IN, OR LATEXT FREAKS OUT
 
 \section{Method}\label{sec:method}
 ...
 
+\begin{figure}[!h]
+		\centering
+		\includegraphics[width=0.49\columnwidth]{figures/cache_logic_before.png}
+	\caption{Previous Implementation}
+\end{figure}
+
+
+\begin{figure}[!h]
+	\centering
+	\includegraphics[width=0.49\columnwidth]{figures/cache_logic_before.png}
+	\caption{DHT and Bloom Push Implementation}
+\end{figure}
+
 \section{Results}\label{sec:results}
 ...
+
+\begin{figure}[!h]
+	\centering
+	\begin{subfigure}[b]{0.49\columnwidth}
+		\centering
+		\includegraphics[width=\columnwidth]{figures/client-server.png}
+	\end{subfigure}
+	\begin{subfigure}[b]{0.49\columnwidth}
+		\centering
+		\includegraphics[width=\columnwidth]{figures/hit_miss_separate.png}
+	\end{subfigure}
+	\caption{Before}
+\end{figure}
+
+\begin{figure}[!h]
+	\centering
+	\begin{subfigure}[b]{0.49\columnwidth}
+		\centering
+		\includegraphics[width=\columnwidth]{figures/client-server_1.png}
+	\end{subfigure}
+	\begin{subfigure}[b]{0.49\columnwidth}
+		\centering
+		\includegraphics[width=\columnwidth]{figures/hit_miss_separate_1.png}
+	\end{subfigure}
+	\caption{After}
+\end{figure}
+
+\begin{figure}[!h]
+	\centering
+	\begin{subfigure}[b]{0.49\columnwidth}
+		\centering
+		\includegraphics[width=\columnwidth]{figures/hit_miss.png}
+	\end{subfigure}
+	\begin{subfigure}[b]{0.49\columnwidth}
+		\centering
+		\includegraphics[width=\columnwidth]{figures/hit_miss_1.png}
+	\end{subfigure}
+	\caption{Hit/Miss Comparison}
+\end{figure}
+
+\begin{figure}[!h]
+	\centering
+	\begin{subfigure}[b]{0.49\columnwidth}
+		\centering
+		\includegraphics[width=\columnwidth]{figures/render.png}
+	\end{subfigure}
+	\begin{subfigure}[b]{0.49\columnwidth}
+		\centering
+		\includegraphics[width=\columnwidth]{figures/render_1.png}
+	\end{subfigure}
+	\caption{PLT Comparison}
+\end{figure}
+
 
 %In Figure~\ref{fig:abc} ...
 
@@ -64,12 +133,7 @@ The rest of this paper is organized as follows.  We discuss the different archit
 ...
 
 \section{Conclusion}\label{sec:conclusion}
-...
-
-\section{Future Work}\label{sec:future}
-Possible extensions to this study include mitigating any of the threats mentioned in Section~\ref{sec:validity}, such as ...
-
-Additionally, as mentioned in Section~\ref{sec:method}...
+\subsection*{Future Work}
 
 \bibliographystyle{plain}
 \bibliography{cdn}
