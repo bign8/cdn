@@ -64,7 +64,8 @@ To distribute the load amongst our servers, we chose to use HAProxy as our load 
 Our system consists of three custom modules, that are used to simulate the load a typical CDN datacenter would experience.  First an origin module serves a website that has chosen to use a CDN to cache their static assets.  Second, a client module is used to generate requests for content, which can be pointed at the origin module or the CDN servers.  Finally, multiple server modules are used to operate within a pool, together comprising a single CDN datacenter.  Together, these components allow us to test various server communication strategies under typical loads.
 \subsection*{Origin}
 
-Instead of using a real website as the subject of our experiment, we used a simulated website generated from previous projects at MSU $TODO REF$.  This demo site creates a consistent but random, graph that is fully connected.  Each node on the graph represents a web page and the edges represent links to other web pages.  Both the number of nodes in the graph and the order of each node, ie the number of edges it links to, are configurable parameters of the simulated site.  Full connectedness is guaranteed by numbering each node and the creation of a doubly linked list within with the graph as each node is connected to the node immediately before and immediately after.
+%TODO REF MSU project. A ref to a presentation or the github repo would work%.
+Instead of using a real website as the subject of our experiment, we used a simulated website generated from previous projects at MSU.  This demo site creates a consistent but random, graph that is fully connected.  Each node on the graph represents a web page and the edges represent links to other web pages.  Both the number of nodes in the graph and the order of each node, ie the number of edges it links to, are configurable parameters of the simulated site.  Full connectedness is guaranteed by numbering each node and the creation of a doubly linked list within with the graph as each node is connected to the node immediately before and immediately after.
 
 In addition to the link graph for the simulated side, textual content and images are also added to each page.  A subset of randomly generated images are included on each page simulating the  images that can be found in headers, footers or logos of a website.  Test content is also included in each page, using randomly generated lorem-ipsum.
 
@@ -88,7 +89,8 @@ For the sake of our tests, each server is considered to have “unlimited” cap
 
 Our initial server cache lookup implementation involved the following logic when processing requests. Given an initial request to a receiving server, the server checks to see if the content is in its local cache; if it is, it is returned directly.  If the content is not within the cache, parallel queries are made to each of the other members in the pool to see if they have the content.  If one of the neighbors has the requested content, the original server would cache it as well and return it to the client. Otherwise, the content is requested from the origin server, the result cached, and the response returned to the client. 
 
-This design has multiple weak points even though it mirrors a standard distributed cache algorithm. (TODO: REF)  This style of naive requesting adds to the congestion of the backing datacenter and causes a fanout where each incoming request has the possibility of spawning O(n) internal queries, where n is the number of servers in the pool.  Additionally, this method duplicates the data across each server in the pool, which can be problematic when caching large amounts of content.
+%TODO: REF standard algorithm%
+This design has multiple weak points even though it mirrors a standard distributed cache algorithm.  This style of naive requesting adds to the congestion of the backing datacenter and causes a fanout where each incoming request has the possibility of spawning O(n) internal queries, where n is the number of servers in the pool.  Additionally, this method duplicates the data across each server in the pool, which can be problematic when caching large amounts of content.
 
 Our enhancement to naive flood requests is to have each server be aware of the neighboring cache contents using bloom filters in addition to using DHT logic to ensure cache content is only stored on a single server.  
 
@@ -124,7 +126,7 @@ Below are the set of graphs from the preexisting fanout implementation showing t
 	\caption{Before}
 \end{figure}
 
-The set of graphs below show the same metrics gathered while using the DHT and Bloom Push system. The approximate number of client requests remains the same across all graphs. As expected, the Clients vs DataCenter Communications graph shows the number of server-to-server requests is dramatically reduced, going from a high of 50000 of the previous implementation, to a high of 24000 with DHT and Bloom Push, a reduction of over 50%. This graphs also show a similar level of decrease in cache misses. 
+The set of graphs below show the same metrics gathered while using the DHT and Bloom Push system. The approximate number of client requests remains the same across all graphs. As expected, the Clients vs Datacenter Communications graph shows the number of server-to-server requests is dramatically reduced, going from a high of 50000 of the previous implementation, to a high of 24000 with DHT and Bloom Push, a reduction of over 50\%. This graphs also show a similar level of decrease in cache misses. 
 
 
 \begin{figure}[!h]
