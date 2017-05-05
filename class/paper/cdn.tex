@@ -71,7 +71,7 @@ Instead of using a real website as the subject of our experiment, we used a simu
 
 \begin{figure}[!h]
 	\centering
-	\includegraphics[width=0.49\columnwidth]{figures/web_graph}
+	\includegraphics[width=0.5\columnwidth]{figures/web_graph}
 	\caption{Sample Website Link Graph}\label{fig:web_graph}
 \end{figure}
 
@@ -81,8 +81,8 @@ Using this locally generated website, we ensure that our testing is not skewed b
 
 \subsection*{Client}
 To replicate real-world users, we create a number of client instances using docker containers. Each client browses to a page of the simulated website with a time delay of one second between each page, and each next page being randomly chosen from among the links of the current page. For a single page, each individual resource corresponds to a client request. Total number of client requests and PLT are calculated on the client. 
-\subsection*{Server}
 
+\subsection*{Server}
 The general configuration of the servers within our tests has remained constant across implementations, with only the difference in logic for content fetching.  Servers are connected to a Redis node, which is used to store a set of all the servers to simplify the DHT generation and maintain a consistent hash table.  Redis’ publish/subscribe functionality is also used to broadcast bloom filter updates for each server on a fixed interval of 15 seconds.
 
 For the sake of our tests, each server is considered to have “unlimited” capacity to store pages.  This was a design decision made to simplify initial implementation due to the fact we are only caching content for a single website, as a single websites resources would not strain an actual CDN datacenter’s caching capabilities.  Further research and development will be done to support cache expiration and capacity limiting to be able to serve as a CDN for multiple websites, but it was not within the purview of this project. 
