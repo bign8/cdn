@@ -22,6 +22,7 @@ import (
 var (
 	target = flag.String("target", os.Getenv("TARGET"), "target hostname")
 	delay  = flag.Duration("delay", time.Second, "delay between page views")
+	actors = flag.Uint("actors", 1, "number of actors generating queries")
 	host   = "unknown"
 
 	timer  metrics.Timer
@@ -49,13 +50,23 @@ func main() {
 	timer = registry.Timer("request")
 	render = registry.Timer("render")
 
-	next := *target
-	for {
+	errc := make(chan error, 1)
+	for i := uint(0); i < *actors; i++ {
+		go func() {
+			errc <- crawl(*target)
+		}()
+	}
+	fmt.Println("Crawl Failrue", <-errc)
+}
+
+func crawl(next string) error {
+	for true {
 		log.Print(host+": Browsing to", next) // TODO: wrap this into nice stats wrapper
 		links := load(next)
 		next = links[rand.Intn(len(links))]
 		time.Sleep(time.Duration(rand.Int63n(int64(*delay))))
 	}
+	return nil
 }
 
 func load(loc string) []string {
